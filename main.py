@@ -2,7 +2,6 @@ import sqlite3
 from pathlib import Path
 from tkinter import Tk
 
-from finder import DuplicatePhotoFinder
 from ui import Interface
 
 
@@ -24,7 +23,7 @@ def main():
             filepath TEXT PRIMARY KEY,
             hash TEXT NOT NULL
         );
-    """
+        """
     )
 
     # Create the GUI
