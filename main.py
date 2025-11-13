@@ -1,7 +1,9 @@
 import sqlite3
 from pathlib import Path
+from tkinter import Tk
 
-from DuplicatePhotoFinder import DuplicatePhotoFinder
+from finder import DuplicatePhotoFinder
+from ui import Interface
 
 
 def main():
@@ -30,5 +32,12 @@ def main():
     duplicate_photo_finder.compute_file_hashes()
 
 
+def display_gui():
+    root = Tk()
+    root.ui = Interface(root)
+    root.mainloop()
+
+
 if __name__ == "__main__":
-    main()
+    # main()
+    display_gui()

@@ -1,1 +1,2 @@
+# Black formatting
 black==25.11.0
