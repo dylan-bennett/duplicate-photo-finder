@@ -27,17 +27,11 @@ def main():
     """
     )
 
-    # Hash the photo files and store in the database
-    duplicate_photo_finder = DuplicatePhotoFinder(database=con)
-    duplicate_photo_finder.compute_file_hashes()
-
-
-def display_gui():
+    # Create the GUI
     root = Tk()
-    root.ui = Interface(root)
+    root.ui = Interface(root, con)
     root.mainloop()
 
 
 if __name__ == "__main__":
-    # main()
-    display_gui()
+    main()

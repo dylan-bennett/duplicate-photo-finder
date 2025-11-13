@@ -1,2 +1,5 @@
 # Black formatting
 black==25.11.0
+
+# Pillow
+pillow==12.0.0

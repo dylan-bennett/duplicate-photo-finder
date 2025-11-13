@@ -9,7 +9,6 @@ class DuplicatePhotoFinder:
         )
         self.valid_image_extensions = {".png", ".jpg", ".jpeg", ".gif", ".bmp"}
         self.database_connection = database
-        self.database_cursor = self.database_connection.cursor()
 
     def find_photo_filepaths(self):
         filepaths = []
@@ -53,15 +52,18 @@ class DuplicatePhotoFinder:
 
         print(f"Found {num_photos} photo file(s)!")
 
+        # Create a cursor to navigate through the database
+        database_cursor = self.database_connection.cursor()
+
         # Run through each photo file
         for i, filepath in enumerate(filepaths, 1):
             print(f"Analyzing photo {i}/{num_photos}...")
 
             # Check if the file path exists in the database. If it does, skip it
-            self.database_cursor.execute(
+            database_cursor.execute(
                 f"SELECT filepath FROM photos WHERE filepath = '{filepath}';"
             )
-            if self.database_cursor.fetchone() is not None:
+            if database_cursor.fetchone() is not None:
                 continue
 
             # Hash the photo file
@@ -71,7 +73,7 @@ class DuplicatePhotoFinder:
                 continue
 
             # Insert the file path and its hash into the database
-            self.database_cursor.execute(
+            database_cursor.execute(
                 f"INSERT INTO photos VALUES ('{filepath}', '{file_hash}');"
             )
             self.database_connection.commit()
