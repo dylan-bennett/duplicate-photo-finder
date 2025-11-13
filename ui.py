@@ -45,14 +45,18 @@ class Interface:
 
         # Frame that holds the thumbnails. Stretch it in all directions.
         self.thumbnails_cols = 5
-        thumbnails_container = OutlinedFrame(main_frame, height=500, width=1000)
+        thumbnails_container = OutlinedFrame(main_frame)
         thumbnails_container.grid(column=0, row=1, sticky=(N, S, E, W))
         thumbnails_container.columnconfigure(0, weight=1)
         thumbnails_container.rowconfigure(0, weight=1)
 
         # Canvas that will scroll the thumbnails frame
         self.thumbnails_canvas = Canvas(
-            thumbnails_container, borderwidth=0, highlightthickness=0
+            thumbnails_container,
+            borderwidth=0,
+            highlightthickness=0,
+            height=500,
+            width=1000,
         )
         self.thumbnails_canvas.grid(column=0, row=0, sticky=(N, S, E, W))
 
