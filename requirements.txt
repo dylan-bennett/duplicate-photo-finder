@@ -1,9 +1,3 @@
-# Photo Duplicate Finder Dependencies
 
-# GUI Framework
-flet==0.28.3
-
-# Image processing
-Pillow==10.4.0
 
 
