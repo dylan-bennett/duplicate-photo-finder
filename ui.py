@@ -1,4 +1,4 @@
-from tkinter import VERTICAL, Canvas, E, N, S, StringVar, W, ttk
+from tkinter import E, N, S, StringVar, W, ttk
 
 from PIL import Image, ImageTk
 
