@@ -1,14 +1,9 @@
-from tkinter import *
-from tkinter import ttk
+from tkinter import VERTICAL, Canvas, E, N, S, StringVar, W, ttk
 
 from PIL import Image, ImageTk
 
 from finder import DuplicatePhotoFinder
-
-
-class OutlinedFrame(ttk.Frame):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs, relief="ridge", borderwidth=2)
+from widgets import OutlinedFrame
 
 
 class Interface:
