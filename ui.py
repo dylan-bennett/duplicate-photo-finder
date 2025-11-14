@@ -3,7 +3,7 @@ from tkinter import VERTICAL, Canvas, E, N, S, StringVar, W, ttk
 from PIL import Image, ImageTk
 
 from finder import DuplicatePhotoFinder
-from widgets import OutlinedFrame
+from widgets import OutlinedFrame, VerticalScrollFrame
 
 
 class Interface:
@@ -40,53 +40,12 @@ class Interface:
 
         # Frame that holds the thumbnails. Stretch it in all directions.
         self.thumbnails_cols = 5
-        thumbnails_container = OutlinedFrame(main_frame)
-        thumbnails_container.grid(column=0, row=1, sticky=(N, S, E, W))
-        thumbnails_container.columnconfigure(0, weight=1)
-        thumbnails_container.rowconfigure(0, weight=1)
-
-        # Canvas that will scroll the thumbnails frame
-        self.thumbnails_canvas = Canvas(
-            thumbnails_container,
-            borderwidth=0,
-            highlightthickness=0,
-            height=500,
-            width=1000,
+        self.thumbnails_container = VerticalScrollFrame(
+            main_frame, width=1000, height=500, relief="ridge", borderwidth=2
         )
-        self.thumbnails_canvas.grid(column=0, row=0, sticky=(N, S, E, W))
-
-        # Scrollbar wired to the canvas
-        thumbnails_scrollbar = ttk.Scrollbar(
-            thumbnails_container, orient=VERTICAL, command=self.thumbnails_canvas.yview
-        )
-        thumbnails_scrollbar.grid(column=1, row=0, sticky=(N, S))
-        self.thumbnails_canvas.configure(yscrollcommand=thumbnails_scrollbar.set)
-
-        # Frame that will actually hold the thumbnails, embedded in the canvas
-        self.thumbnails_frame = ttk.Frame(self.thumbnails_canvas)
-        self._thumbnails_window = self.thumbnails_canvas.create_window(
-            (0, 0), window=self.thumbnails_frame, anchor="nw"
-        )
-
-        # Update the scrollable region whenever the inner frame changes size
-        self.thumbnails_frame.bind(
-            "<Configure>",
-            lambda event: self.thumbnails_canvas.configure(
-                scrollregion=self.thumbnails_canvas.bbox("all")
-            ),
-        )
-
-        # Keep the inner frame the same width as the canvas so it stretches horizontally
-        self.thumbnails_canvas.bind(
-            "<Configure>",
-            lambda event: self.thumbnails_canvas.itemconfigure(
-                self._thumbnails_window, width=event.width
-            ),
-        )
-
-        # Enable scrolling with the mouse wheel when hovering the canvas
-        self.thumbnails_canvas.bind("<Enter>", self._bind_mousewheel)
-        self.thumbnails_canvas.bind("<Leave>", self._unbind_mousewheel)
+        self.thumbnails_container.grid(column=0, row=1, sticky=(N, S, E, W))
+        self.thumbnails_container.columnconfigure(0, weight=1)
+        self.thumbnails_container.rowconfigure(0, weight=1)
 
         # Fill the root window with the main frame
         root.columnconfigure(0, weight=1)
@@ -173,7 +132,7 @@ class Interface:
         db_rows = database_cursor.fetchall()
 
         # Remove any previous thumbnail groups
-        for child in self.thumbnails_frame.winfo_children():
+        for child in self.thumbnails_container.frame.winfo_children():
             child.destroy()
 
         self.hash_and_thumbnails = {}
@@ -184,7 +143,7 @@ class Interface:
             filepaths = concat_filepaths.split(",")
 
             # Create a new Frame for the hash's thumbnails
-            hash_frame = ttk.Frame(self.thumbnails_frame)
+            hash_frame = ttk.Frame(self.thumbnails_container.frame)
             hash_frame.grid(row=frame_row, column=0)
             frame_row += 1
 
@@ -193,22 +152,3 @@ class Interface:
 
             # Save the thumbnail objects, to avoid garbage collection
             self.hash_and_thumbnails[hash] = thumbnails
-
-    def _bind_mousewheel(self, _event):
-        self.thumbnails_canvas.bind_all("<MouseWheel>", self._on_mousewheel)
-        self.thumbnails_canvas.bind_all("<Button-4>", self._on_mousewheel)
-        self.thumbnails_canvas.bind_all("<Button-5>", self._on_mousewheel)
-
-    def _unbind_mousewheel(self, _event):
-        self.thumbnails_canvas.unbind_all("<MouseWheel>")
-        self.thumbnails_canvas.unbind_all("<Button-4>")
-        self.thumbnails_canvas.unbind_all("<Button-5>")
-
-    def _on_mousewheel(self, event):
-        if event.num == 4:
-            self.thumbnails_canvas.yview_scroll(-1, "units")
-        elif event.num == 5:
-            self.thumbnails_canvas.yview_scroll(1, "units")
-        elif event.delta:
-            direction = -1 if event.delta > 0 else 1
-            self.thumbnails_canvas.yview_scroll(direction, "units")
