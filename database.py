@@ -65,7 +65,7 @@ class Database:
             bool: True if the filepath exists in the database, False otherwise.
         """
         self.cursor.execute(
-            f"SELECT filepath FROM photos WHERE filepath = '{filepath}';"
+            "SELECT filepath FROM photos WHERE filepath = ?;", (filepath,)
         )
         return self.cursor.fetchone() is not None
 
@@ -81,9 +81,23 @@ class Database:
         """
         try:
             self.cursor.execute(
-                f"INSERT INTO photos VALUES ('{filepath}', '{file_hash}');"
+                "INSERT INTO photos VALUES (?, ?);", (filepath, file_hash)
             )
             self.connection.commit()
         except sqlite3.IntegrityError as e:
             print(f"Could not insert {filepath} into database: {e}")
+            raise
+
+    def remove_filepaths(self, filepaths):
+        if not filepaths:
+            return
+
+        try:
+            placeholders = ",".join("?" * len(filepaths))
+            self.cursor.execute(
+                f"DELETE FROM photos WHERE filepath IN ({placeholders});", filepaths
+            )
+            self.connection.commit()
+        except sqlite3.IntegrityError as e:
+            print(f"Error deleting entries from database: {e}")
             raise

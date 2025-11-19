@@ -95,18 +95,48 @@ class Interface:
         main_frame.rowconfigure(1, weight=1)
 
     def show_delete_confirm_modal(self):
+        filepaths = [t.filepath for t in self.selected_thumbnails]
+
+        print(filepaths)
+
+        # Show a confirmation modal to the user
         response = messagebox.askyesno(
             title="Confirm Delete Photos",
             message=(
                 "Are you sure you want to delete the selected "
-                f"{len(self.selected_thumbnails)} photos?"
+                f"{len(filepaths)} photos?"
             ),
         )
 
-        if response:
-            print("DO IT")
-        else:
-            print("noperoo")
+        # If Yes is selected
+        if response is True:
+            self.delete_selected_photos(filepaths)
+
+    def delete_selected_photos(self, filepaths):
+        # Delete the photos from the hard drive
+        self.finder.delete_selected_photos(filepaths)
+
+        # Remove the entry from the database
+        try:
+            self.database.remove_filepaths(filepaths)
+        except IntegrityError:
+            pass
+
+        # Update the thumbnails
+        self.scanning_text.set("Updating thumbnails...")
+        self.populate_thumbnails()
+
+        # Reset the scanning text
+        self.scanning_text.set("Scan complete!")
+
+        # Let the user know that the files have been deleted
+        messagebox.showinfo(
+            title="Photos Deleted!",
+            message=f"Successfully deleted {len(filepaths)} photos",
+        )
+
+        # Clear out the selected photos list
+        self.selected_thumbnails = []
 
     def scan_for_duplicates(self):
         """Scan for duplicate photos and update the display.

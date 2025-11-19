@@ -45,6 +45,19 @@ class Finder:
 
         return filepaths
 
+    def delete_selected_photos(self, filepaths):
+        for filepath in filepaths:
+            if os.path.exists(filepath):
+                # Delete the photo from the system
+                try:
+                    os.remove(filepath)
+                except OSError as e:
+                    print(f"Error deleting {filepath}: {e}")
+                    continue
+
+            else:
+                print(f"File not found, skipping: {filepath}")
+
     def hash_file(self, filepath):
         """Compute the MD5 hash of a file.
 
