@@ -1,4 +1,4 @@
-from tkinter import E, N, S, StringVar, W, ttk
+from tkinter import E, N, S, StringVar, Tk, W, ttk
 
 from PIL import Image, ImageTk
 
@@ -6,15 +6,16 @@ from widgets import OutlinedFrame, VerticalScrollFrame
 
 
 class Interface:
-    def __init__(self, tk_root, database, finder):
+    def __init__(self, database, finder):
+        self.tk_root = Tk()
         self.finder = finder
         self.database = database
 
         # Set the window title
-        tk_root.title("Duplicate Photo Finder")
+        self.tk_root.title("Duplicate Photo Finder")
 
         # Create the main frame within the window
-        main_frame = ttk.Frame(tk_root, padding=(3, 3, 3, 3))
+        main_frame = ttk.Frame(self.tk_root, padding=(3, 3, 3, 3))
         main_frame.grid(column=0, row=0, sticky=(N, S, E, W))
 
         # Frame that holds the controls. Stretch it horizontally.
@@ -47,8 +48,8 @@ class Interface:
         self.thumbnails_container.rowconfigure(0, weight=1)
 
         # Fill the Tk root window with the main frame
-        tk_root.columnconfigure(0, weight=1)
-        tk_root.rowconfigure(0, weight=1)
+        self.tk_root.columnconfigure(0, weight=1)
+        self.tk_root.rowconfigure(0, weight=1)
 
         # Fill the main frame with the first column and the thumbnails row
         main_frame.columnconfigure(0, weight=1)
@@ -59,6 +60,9 @@ class Interface:
 
         # Fill the thumbnails frame with duplicate thumbnails
         self.populate_thumbnails()
+
+        # Spin up the GUI
+        self.tk_root.mainloop()
 
     def scan_for_duplicates(self):
         self.scanning_text.set("Scanning for photo files...")

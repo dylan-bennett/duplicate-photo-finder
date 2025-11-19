@@ -1,9 +1,8 @@
 from pathlib import Path
-from tkinter import Tk
 
 from database import Database
 from finder import Finder
-from ui import Interface
+from interface import Interface
 
 
 class DuplicatePhotoFinder:
@@ -38,15 +37,13 @@ class DuplicatePhotoFinder:
         )
 
     def init_interface(self):
-        # Create and run the GUI
-        self.interface = Tk()
-        self.interface.ui = Interface(self.interface, self.database, self.finder)
+        # Instantiate the GUI
+        self.interface = Interface(self.database, self.finder)
 
     def run(self):
         self.init_database()
         self.init_finder()
         self.init_interface()
-        self.interface.mainloop()
 
 
 if __name__ == "__main__":
