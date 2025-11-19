@@ -57,10 +57,10 @@ class Interface:
         controls_frame.grid(column=0, row=0, sticky=(E, W))
 
         # Scan button
-        scan_button = ttk.Button(
+        self.scan_button = ttk.Button(
             controls_frame, text="Scan", command=self.scan_for_duplicates
         )
-        scan_button.grid(column=0, row=0, sticky=W)
+        self.scan_button.grid(column=0, row=0, sticky=W)
 
         # Scanning text, stretched horizontally
         self.scanning_text = StringVar(value="Click to scan")
@@ -69,8 +69,8 @@ class Interface:
         controls_frame.columnconfigure(1, weight=1)
 
         # Delete button
-        delete_button = ttk.Button(controls_frame, text="Delete")
-        delete_button.grid(column=2, row=0, sticky=E)
+        self.delete_button = ttk.Button(controls_frame, text="Delete", state="disabled")
+        self.delete_button.grid(column=2, row=0, sticky=E)
 
         # Frame that holds the thumbnails. Stretch it in all directions.
         self.thumbnails_cols = 5
@@ -199,7 +199,10 @@ class Interface:
             self.selected_thumbnails.append(label)
             label.thumbnail_frame.configure(relief="solid")
 
-        print([t.filepath for t in self.selected_thumbnails])
+        # Enable or disable the Delete button
+        self.delete_button.state(
+            ["disabled" if len(self.selected_thumbnails) == 0 else "!disabled"]
+        )
 
     def populate_thumbnails(self):
         """Populate the thumbnails container with duplicate photos from the database.
