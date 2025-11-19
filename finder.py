@@ -3,10 +3,8 @@ import os
 
 
 class DuplicatePhotoFinder:
-    def __init__(self, database):
-        self.directory_to_scan = (
-            "/home/dylan/Documents/Development/duplicate-photo-finder/test/"
-        )
+    def __init__(self, database, directory_to_scan):
+        self.directory_to_scan = directory_to_scan
         self.valid_image_extensions = {".png", ".jpg", ".jpeg", ".gif", ".bmp"}
         self.database = database
 
@@ -44,8 +42,6 @@ class DuplicatePhotoFinder:
             raise
 
     def compute_file_hash(self, filepath):
-        # print(f"Analyzing photo {i}/{num_photos}...")
-
         # Check if the file path exists in the database. If it does, skip it
         if self.database.check_filepath_exists(filepath):
             return
@@ -58,16 +54,3 @@ class DuplicatePhotoFinder:
 
         # Insert the file path and its hash into the database
         self.database.insert_filepath_and_hash(filepath, file_hash)
-
-    def compute_file_hashes(self):
-        print("Finding photo files...")
-
-        # Get all the filepaths of the photos
-        filepaths = self.find_photo_filepaths()
-        num_photos = len(filepaths)
-
-        print(f"Found {num_photos} photo file(s)!")
-
-        # Run through each photo file
-        for i, filepath in enumerate(filepaths, 1):
-            self.compute_file_hash(filepath)

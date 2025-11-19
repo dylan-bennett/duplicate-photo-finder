@@ -14,13 +14,16 @@ def main():
     db_name = "photos.db"
     full_path = home_folder / config_folder / root_folder
     full_path.mkdir(exist_ok=True)
+    directory_to_scan = "/home/dylan/Documents/Development/duplicate-photo-finder/test/"
 
     # Open / Create the database
     database = Database(f"{full_path}/{db_name}")
     database.create_db()
 
     # Instantiate the Finder
-    finder = DuplicatePhotoFinder(database=database)
+    finder = DuplicatePhotoFinder(
+        database=database, directory_to_scan=directory_to_scan
+    )
 
     # Create and run the GUI
     root = Tk()

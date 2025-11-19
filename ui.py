@@ -64,9 +64,6 @@ class Interface:
         self.scanning_text.set("Scanning for photo files...")
 
         # Hash the photo files and store in the database
-        # finder = DuplicatePhotoFinder(database=self.database.connection)
-        # duplicate_photo_finder.compute_file_hashes()
-
         filepaths = self.finder.find_photo_filepaths()
         num_photos = len(filepaths)
         for i, filepath in enumerate(filepaths, 1):
