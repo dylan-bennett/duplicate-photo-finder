@@ -1,6 +1,5 @@
 import hashlib
 import os
-from sqlite3 import IntegrityError
 
 
 class Finder:
@@ -76,29 +75,29 @@ class Finder:
             print(f"Warning: Could not read file {filepath}: {e}")
             raise
 
-    def compute_and_store_file_hash(self, filepath):
-        """Compute and store the hash of a file if not already in the database.
+    def compute_file_hash(self, filepath):
+        """Compute the MD5 hash of a file if not already present in the database.
 
         Args:
-            filepath: Path to the file to hash and store.
+            filepath: Path to the file whose hash should be computed.
 
-        Checks if the file path already exists in the database. If it does,
-        the method returns early. Otherwise, it computes the file's MD5 hash
-        and stores both the filepath and hash in the database. Silently
-        handles file read errors by returning without storing anything.
+        Returns:
+            str or None: The hexadecimal MD5 hash string if computed, or None if the
+            file is already in the database or if an error occurs during hashing.
+
+        This method first checks if the file path is already present in the database.
+        If it exists, the function returns None and does not recompute the hash.
+        If not, it attempts to read the file and compute its MD5 hash.
+        If any file read errors occur (IOError or OSError), None is returned.
         """
         # Check if the file path exists in the database. If it does, skip it
         if self.database.check_filepath_exists(filepath):
-            return
+            return None
 
         # Hash the photo file
         try:
             file_hash = self.hash_file(filepath)
         except (IOError, OSError):
-            return
+            return None
 
-        # Insert the file path and its hash into the database
-        try:
-            self.database.insert_filepath_and_hash(filepath, file_hash)
-        except IntegrityError:
-            return
+        return file_hash

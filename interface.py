@@ -1,3 +1,4 @@
+from sqlite3 import IntegrityError
 from tkinter import E, N, S, StringVar, Tk, W, ttk
 
 from PIL import Image, ImageTk
@@ -93,6 +94,7 @@ class Interface:
         display to show newly found duplicates. Updates the status text
         throughout the scanning process.
         """
+        # Update the scanning text
         self.scanning_text.set("Scanning for photo files...")
 
         # Hash the photo files and store in the database
@@ -100,13 +102,20 @@ class Interface:
         num_photos = len(filepaths)
         for i, filepath in enumerate(filepaths, 1):
             self.scanning_text.set(f"Analyzing photo {i}/{num_photos}...")
-            self.finder.compute_and_store_file_hash(filepath)
+            file_hash = self.finder.compute_file_hash(filepath)
 
-        self.scanning_text.set("Updating thumbnails...")
+            # Insert the file path and its hash into the database
+            if file_hash:
+                try:
+                    self.database.insert_filepath_and_hash(filepath, file_hash)
+                except IntegrityError:
+                    pass
 
         # Update the thumbnails
+        self.scanning_text.set("Updating thumbnails...")
         self.populate_thumbnails()
 
+        # Reset the scanning text
         self.scanning_text.set("Scan complete!")
 
     def display_thumbnails_in_frame(self, hash_frame, filepaths):
