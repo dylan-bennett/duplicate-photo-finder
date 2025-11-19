@@ -2,6 +2,7 @@ from sqlite3 import IntegrityError
 from tkinter import E, N, S, StringVar, Tk, W, messagebox, ttk
 
 from PIL import Image, ImageTk
+from tktooltip import ToolTip
 
 from widgets import OutlinedFrame, VerticalScrollFrame
 
@@ -19,6 +20,9 @@ class Interface:
         """
         self.finder = finder
         self.database = database
+
+        # Number of columns the thumbnails should take up at max
+        self.thumbnails_cols = 4
 
         # Reference to each hash's thumbnail objects, to prevent garbage collection
         self.hash_and_thumbnails = {}
@@ -78,7 +82,6 @@ class Interface:
         self.delete_button.grid(column=2, row=0, sticky=E)
 
         # Frame that holds the thumbnails. Stretch it in all directions.
-        self.thumbnails_cols = 5
         self.thumbnails_container = VerticalScrollFrame(
             main_frame, width=1000, height=500, relief="ridge", borderwidth=2
         )
@@ -100,11 +103,12 @@ class Interface:
         print(filepaths)
 
         # Show a confirmation modal to the user
+        num_photos = len(filepaths)
         response = messagebox.askyesno(
             title="Confirm Delete Photos",
             message=(
                 "Are you sure you want to delete the selected "
-                f"{len(filepaths)} photos?"
+                f"{num_photos} photo{'' if num_photos == 1 else 's'}?"
             ),
         )
 
@@ -122,6 +126,9 @@ class Interface:
         except IntegrityError:
             pass
 
+        # Visually disable the delete button
+        self.delete_button.state(["disabled"])
+
         # Update the thumbnails
         self.scanning_text.set("Updating thumbnails...")
         self.populate_thumbnails()
@@ -130,9 +137,13 @@ class Interface:
         self.scanning_text.set("Scan complete!")
 
         # Let the user know that the files have been deleted
+        num_photos = len(filepaths)
         messagebox.showinfo(
             title="Photos Deleted!",
-            message=f"Successfully deleted {len(filepaths)} photos",
+            message=(
+                f"Successfully deleted {num_photos} "
+                f"photo{'' if num_photos == 1 else 's'}"
+            ),
         )
 
         # Clear out the selected photos list
@@ -212,17 +223,26 @@ class Interface:
             thumbnail_frame.grid(row=row, column=col, padx=5, pady=5)
 
             # Display the thumbnail within the frame
-            label = ttk.Label(thumbnail_frame, image=thumbnail)
-            label.pack()
+            thumbnail_label = ttk.Label(thumbnail_frame, image=thumbnail)
+            thumbnail_label.pack()
 
             # Add in filepath and frame attributes to the Label, for later reference
-            label.filepath = filepath
-            label.thumbnail_frame = thumbnail_frame
+            thumbnail_label.filepath = filepath
+            thumbnail_label.thumbnail_frame = thumbnail_frame
 
             # Bind a click event to the Label, to toggle selection
-            label.bind(
-                "<Button-1>", lambda e, lbl=label: self.toggle_thumbnail_selection(lbl)
+            thumbnail_label.bind(
+                "<Button-1>",
+                lambda e, lbl=thumbnail_label: self.toggle_thumbnail_selection(lbl),
             )
+
+            # Add a tooltip to the thumbnail
+            ToolTip(thumbnail_label, msg=filepath)
+
+            # Add the filepath underneath the thumbnail
+            filename = filepath.split("/")[-1]
+            filepath_label = ttk.Label(thumbnail_frame, text=filename)
+            filepath_label.pack()
 
             # Increment the row and column
             col += 1
@@ -278,7 +298,14 @@ class Interface:
 
             # Create a new Frame for the hash's thumbnails
             hash_frame = ttk.Frame(self.thumbnails_container.frame)
-            hash_frame.grid(row=frame_row, column=0)
+            hash_frame.grid(row=frame_row, column=0, sticky=(W))
+            frame_row += 1
+
+            # Put in a visual separator spanning the full width of the frame
+            separator = ttk.Separator(
+                self.thumbnails_container.frame, orient="horizontal"
+            )
+            separator.grid(row=frame_row, column=0, sticky=(E, W), padx=10, pady=5)
             frame_row += 1
 
             # Put the thumbnails into the frame
