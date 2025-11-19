@@ -23,6 +23,9 @@ class Interface:
         # Reference to each hash's thumbnail objects, to prevent garbage collection
         self.hash_and_thumbnails = {}
 
+        # List of selected thumbnails
+        self.selected_thumbnails = []
+
         # Instantiate the Tk root window
         self.tk_root = Tk()
 
@@ -133,9 +136,10 @@ class Interface:
         in a grid with 5 columns. Handles errors gracefully by skipping
         images that cannot be loaded.
         """
-        # Display the photos as thumbnails
         thumbnails = []
+        row, col = 0, 0
 
+        # Run through all of the photograph files
         for filepath in filepaths:
             try:
                 # Create the Image object
@@ -145,19 +149,31 @@ class Interface:
                 img.thumbnail((200, 200))
 
                 # Create a Tkinter-compatible photo image object
-                tk_img = ImageTk.PhotoImage(img)
+                thumbnail = ImageTk.PhotoImage(img)
 
                 # Add it to our list of thumbnails
-                thumbnails.append(tk_img)
+                thumbnails.append(thumbnail)
             except Exception as e:
                 print(f"Error loading image {filepath}: {e}")
+                continue
 
-        # Display the thumbnails within the thumbnails frame
-        row, col = 0, 0
-        for thumbnail in thumbnails:
-            # Display the thumbnail
-            label = ttk.Label(hash_frame, image=thumbnail)
-            label.grid(row=row, column=col, padx=5, pady=5)
+            # Create a frame for the thumbnail. We'll change its border
+            # to indicate selected/deselecated
+            thumbnail_frame = ttk.Frame(hash_frame, relief="flat", borderwidth=3)
+            thumbnail_frame.grid(row=row, column=col, padx=5, pady=5)
+
+            # Display the thumbnail within the frame
+            label = ttk.Label(thumbnail_frame, image=thumbnail)
+            label.pack()
+
+            # Add in filepath and frame attributes to the Label, for later reference
+            label.filepath = filepath
+            label.thumbnail_frame = thumbnail_frame
+
+            # Bind a click event to the Label, to toggle selection
+            label.bind(
+                "<Button-1>", lambda e, lbl=label: self.toggle_thumbnail_selection(lbl)
+            )
 
             # Increment the row and column
             col += 1
@@ -167,6 +183,23 @@ class Interface:
 
         # Return the thumbnail objects to prevent garbage collection
         return thumbnails
+
+    def toggle_thumbnail_selection(self, label):
+        """Toggle the selection state of a thumbnail.
+
+        Args:
+            label: The ttk.Label widget representing the thumbnail.
+        """
+        if label in self.selected_thumbnails:
+            # Deselect the thumbnail and remove the visual indicator
+            self.selected_thumbnails.remove(label)
+            label.thumbnail_frame.configure(relief="flat")
+        else:
+            # Select the thumbnail and add a visual indicator
+            self.selected_thumbnails.append(label)
+            label.thumbnail_frame.configure(relief="solid")
+
+        print([t.filepath for t in self.selected_thumbnails])
 
     def populate_thumbnails(self):
         """Populate the thumbnails container with duplicate photos from the database.
