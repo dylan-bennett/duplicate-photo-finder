@@ -1,7 +1,7 @@
-import sqlite3
 from pathlib import Path
 from tkinter import Tk
 
+from database import Database
 from finder import DuplicatePhotoFinder
 from ui import Interface
 
@@ -11,28 +11,20 @@ def main():
     home_folder = Path.home()
     config_folder = ".config"
     root_folder = "duplicate-photo-finder"
+    db_name = "photos.db"
     full_path = home_folder / config_folder / root_folder
     full_path.mkdir(exist_ok=True)
 
     # Open / Create the database
-    db_name = "photos.db"
-    con = sqlite3.connect(f"{full_path}/{db_name}")
-    cur = con.cursor()
-    cur.execute(
-        """
-        CREATE TABLE IF NOT EXISTS photos (
-            filepath TEXT PRIMARY KEY,
-            hash TEXT NOT NULL
-        );
-        """
-    )
+    database = Database(f"{full_path}/{db_name}")
+    database.create_db()
 
     # Instantiate the Finder
-    finder = DuplicatePhotoFinder(database=con)
+    finder = DuplicatePhotoFinder(database=database)
 
-    # Create the GUI
+    # Create and run the GUI
     root = Tk()
-    root.ui = Interface(root, con, finder)
+    root.ui = Interface(root, database, finder)
     root.mainloop()
 
 
