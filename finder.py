@@ -2,7 +2,7 @@ import hashlib
 import os
 
 
-class DuplicatePhotoFinder:
+class Finder:
     def __init__(self, database, directory_to_scan):
         self.directory_to_scan = directory_to_scan
         self.valid_image_extensions = {".png", ".jpg", ".jpeg", ".gif", ".bmp"}

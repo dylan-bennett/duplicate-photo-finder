@@ -2,8 +2,8 @@ import sqlite3
 
 
 class Database:
-    def __init__(self, path_to_db):
-        self.connection = sqlite3.connect(path_to_db)
+    def __init__(self, db_path):
+        self.connection = sqlite3.connect(db_path)
         self.cursor = self.connection.cursor()
 
     def create_db(self):
