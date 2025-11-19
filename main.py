@@ -2,6 +2,7 @@ import sqlite3
 from pathlib import Path
 from tkinter import Tk
 
+from finder import DuplicatePhotoFinder
 from ui import Interface
 
 
@@ -26,9 +27,12 @@ def main():
         """
     )
 
+    # Instantiate the Finder
+    finder = DuplicatePhotoFinder(database=con)
+
     # Create the GUI
     root = Tk()
-    root.ui = Interface(root, con)
+    root.ui = Interface(root, con, finder)
     root.mainloop()
 
 

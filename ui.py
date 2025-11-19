@@ -2,20 +2,20 @@ from tkinter import E, N, S, StringVar, W, ttk
 
 from PIL import Image, ImageTk
 
-from finder import DuplicatePhotoFinder
 from widgets import OutlinedFrame, VerticalScrollFrame
 
 
 class Interface:
-    def __init__(self, root, database):
+    def __init__(self, tk_root, database, finder):
+        self.finder = finder
         self.database_connection = database
         self.database_cursor = self.database_connection.cursor()
 
         # Set the window title
-        root.title("Duplicate Photo Finder")
+        tk_root.title("Duplicate Photo Finder")
 
         # Create the main frame within the window
-        main_frame = ttk.Frame(root, padding=(3, 3, 3, 3))
+        main_frame = ttk.Frame(tk_root, padding=(3, 3, 3, 3))
         main_frame.grid(column=0, row=0, sticky=(N, S, E, W))
 
         # Frame that holds the controls. Stretch it horizontally.
@@ -47,9 +47,9 @@ class Interface:
         self.thumbnails_container.columnconfigure(0, weight=1)
         self.thumbnails_container.rowconfigure(0, weight=1)
 
-        # Fill the root window with the main frame
-        root.columnconfigure(0, weight=1)
-        root.rowconfigure(0, weight=1)
+        # Fill the Tk root window with the main frame
+        tk_root.columnconfigure(0, weight=1)
+        tk_root.rowconfigure(0, weight=1)
 
         # Fill the main frame with the first column and the thumbnails row
         main_frame.columnconfigure(0, weight=1)
@@ -65,14 +65,14 @@ class Interface:
         self.scanning_text.set("Scanning for photo files...")
 
         # Hash the photo files and store in the database
-        finder = DuplicatePhotoFinder(database=self.database_connection)
+        # finder = DuplicatePhotoFinder(database=self.database_connection)
         # duplicate_photo_finder.compute_file_hashes()
 
-        filepaths = finder.find_photo_filepaths()
+        filepaths = self.finder.find_photo_filepaths()
         num_photos = len(filepaths)
         for i, filepath in enumerate(filepaths, 1):
             self.scanning_text.set(f"Analyzing photo {i}/{num_photos}...")
-            finder.compute_file_hash(filepath)
+            self.finder.compute_file_hash(filepath)
 
         self.scanning_text.set("Updating thumbnails...")
 

@@ -4,7 +4,9 @@ import os
 
 class DuplicatePhotoFinder:
     def __init__(self, database):
-        self.directory_to_scan = "/home/dylan/Pictures"
+        self.directory_to_scan = (
+            "/home/dylan/Documents/Development/duplicate-photo-finder/test/"
+        )
         self.valid_image_extensions = {".png", ".jpg", ".jpeg", ".gif", ".bmp"}
         self.database_connection = database
         self.database_cursor = self.database_connection.cursor()
