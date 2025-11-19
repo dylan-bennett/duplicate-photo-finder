@@ -1,5 +1,5 @@
 from sqlite3 import IntegrityError
-from tkinter import E, N, S, StringVar, Tk, W, ttk
+from tkinter import E, N, S, StringVar, Tk, W, messagebox, ttk
 
 from PIL import Image, ImageTk
 
@@ -69,7 +69,12 @@ class Interface:
         controls_frame.columnconfigure(1, weight=1)
 
         # Delete button
-        self.delete_button = ttk.Button(controls_frame, text="Delete", state="disabled")
+        self.delete_button = ttk.Button(
+            controls_frame,
+            text="Delete",
+            state="disabled",
+            command=self.show_delete_confirm_modal,
+        )
         self.delete_button.grid(column=2, row=0, sticky=E)
 
         # Frame that holds the thumbnails. Stretch it in all directions.
@@ -88,6 +93,20 @@ class Interface:
         # Fill the main frame with the first column and the thumbnails row
         main_frame.columnconfigure(0, weight=1)
         main_frame.rowconfigure(1, weight=1)
+
+    def show_delete_confirm_modal(self):
+        response = messagebox.askyesno(
+            title="Confirm Delete Photos",
+            message=(
+                "Are you sure you want to delete the selected "
+                f"{len(self.selected_thumbnails)} photos?"
+            ),
+        )
+
+        if response:
+            print("DO IT")
+        else:
+            print("noperoo")
 
     def scan_for_duplicates(self):
         """Scan for duplicate photos and update the display.
