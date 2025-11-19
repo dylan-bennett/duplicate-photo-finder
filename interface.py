@@ -7,6 +7,15 @@ from widgets import OutlinedFrame, VerticalScrollFrame
 
 class Interface:
     def __init__(self, database, finder):
+        """Initialize the Interface and start the GUI application.
+
+        Args:
+            database: Database instance for accessing photo data.
+            finder: Finder instance for scanning and hashing photos.
+
+        Creates the Tkinter root window, builds the GUI layout, populates
+        initial thumbnails, and starts the main event loop.
+        """
         self.finder = finder
         self.database = database
 
@@ -26,6 +35,12 @@ class Interface:
         self.tk_root.mainloop()
 
     def create_gui(self):
+        """Create and configure the graphical user interface layout.
+
+        Sets up the main window with a controls frame containing scan and
+        delete buttons, a status label, and a scrollable thumbnails container
+        for displaying duplicate photos.
+        """
         # Set the window title
         self.tk_root.title("Duplicate Photo Finder")
 
@@ -71,6 +86,13 @@ class Interface:
         main_frame.rowconfigure(1, weight=1)
 
     def scan_for_duplicates(self):
+        """Scan for duplicate photos and update the display.
+
+        Finds all photo files in the configured directory, computes their
+        hashes, stores them in the database, and updates the thumbnail
+        display to show newly found duplicates. Updates the status text
+        throughout the scanning process.
+        """
         self.scanning_text.set("Scanning for photo files...")
 
         # Hash the photo files and store in the database
@@ -78,7 +100,7 @@ class Interface:
         num_photos = len(filepaths)
         for i, filepath in enumerate(filepaths, 1):
             self.scanning_text.set(f"Analyzing photo {i}/{num_photos}...")
-            self.finder.compute_file_hash(filepath)
+            self.finder.compute_and_store_file_hash(filepath)
 
         self.scanning_text.set("Updating thumbnails...")
 
@@ -88,6 +110,20 @@ class Interface:
         self.scanning_text.set("Scan complete!")
 
     def display_thumbnails_in_frame(self, hash_frame, filepaths):
+        """Display photo thumbnails in a grid layout within the given frame.
+
+        Args:
+            hash_frame: Tkinter Frame widget to display thumbnails in.
+            filepaths: List of file paths to images to display as thumbnails.
+
+        Returns:
+            List of PhotoImage objects representing the thumbnails. These
+            must be kept in scope to prevent garbage collection.
+
+        Loads each image, creates a 200x200 thumbnail, and arranges them
+        in a grid with 5 columns. Handles errors gracefully by skipping
+        images that cannot be loaded.
+        """
         # Display the photos as thumbnails
         thumbnails = []
 
@@ -124,6 +160,13 @@ class Interface:
         return thumbnails
 
     def populate_thumbnails(self):
+        """Populate the thumbnails container with duplicate photos from the database.
+
+        Retrieves all duplicate photos grouped by hash from the database,
+        clears any existing thumbnails, and displays each group of duplicates
+        in separate frames. Maintains references to thumbnail objects to
+        prevent garbage collection.
+        """
         # Grab the duplicate photos, grouped by hash
         db_rows = self.database.get_duplicate_photos()
 
