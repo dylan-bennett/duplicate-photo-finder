@@ -79,5 +79,11 @@ class Database:
         Commits the transaction after inserting the record. If the filepath
         already exists (as a PRIMARY KEY), this will raise an IntegrityError.
         """
-        self.cursor.execute(f"INSERT INTO photos VALUES ('{filepath}', '{file_hash}');")
-        self.connection.commit()
+        try:
+            self.cursor.execute(
+                f"INSERT INTO photos VALUES ('{filepath}', '{file_hash}');"
+            )
+            self.connection.commit()
+        except sqlite3.IntegrityError as e:
+            print(f"Could not insert {filepath} into database: {e}")
+            raise

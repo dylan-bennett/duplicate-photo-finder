@@ -1,5 +1,6 @@
 import hashlib
 import os
+from sqlite3 import IntegrityError
 
 
 class Finder:
@@ -97,4 +98,7 @@ class Finder:
             return
 
         # Insert the file path and its hash into the database
-        self.database.insert_filepath_and_hash(filepath, file_hash)
+        try:
+            self.database.insert_filepath_and_hash(filepath, file_hash)
+        except IntegrityError:
+            return
