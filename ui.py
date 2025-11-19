@@ -8,8 +8,7 @@ from widgets import OutlinedFrame, VerticalScrollFrame
 class Interface:
     def __init__(self, tk_root, database, finder):
         self.finder = finder
-        self.database_connection = database
-        self.database_cursor = self.database_connection.cursor()
+        self.database = database
 
         # Set the window title
         tk_root.title("Duplicate Photo Finder")
@@ -65,7 +64,7 @@ class Interface:
         self.scanning_text.set("Scanning for photo files...")
 
         # Hash the photo files and store in the database
-        # finder = DuplicatePhotoFinder(database=self.database_connection)
+        # finder = DuplicatePhotoFinder(database=self.database.con)
         # duplicate_photo_finder.compute_file_hashes()
 
         filepaths = self.finder.find_photo_filepaths()
@@ -118,23 +117,14 @@ class Interface:
         return thumbnails
 
     def populate_thumbnails(self):
-        # Create a cursor to navigate through the database
-        database_cursor = self.database_connection.cursor()
-
         # Grab the duplicate photos, grouped by hash
-        database_cursor.execute(
-            """SELECT hash, GROUP_CONCAT(filepath)
-            FROM photos
-            GROUP BY hash
-            HAVING COUNT(*) > 1
-            """
-        )
-        db_rows = database_cursor.fetchall()
+        db_rows = self.database.get_duplicate_photos()
 
         # Remove any previous thumbnail groups
         for child in self.thumbnails_container.frame.winfo_children():
             child.destroy()
 
+        # Will need to save the thumbnail objects, to avoid garbage collection
         self.hash_and_thumbnails = {}
 
         frame_row = 0
