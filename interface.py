@@ -7,10 +7,25 @@ from widgets import OutlinedFrame, VerticalScrollFrame
 
 class Interface:
     def __init__(self, database, finder):
-        self.tk_root = Tk()
         self.finder = finder
         self.database = database
 
+        # Reference to each hash's thumbnail objects, to prevent garbage collection
+        self.hash_and_thumbnails = {}
+
+        # Instantiate the Tk root window
+        self.tk_root = Tk()
+
+        # Create the GUI
+        self.create_gui()
+
+        # Fill the thumbnails frame with duplicate thumbnails
+        self.populate_thumbnails()
+
+        # Spin up the GUI
+        self.tk_root.mainloop()
+
+    def create_gui(self):
         # Set the window title
         self.tk_root.title("Duplicate Photo Finder")
 
@@ -54,15 +69,6 @@ class Interface:
         # Fill the main frame with the first column and the thumbnails row
         main_frame.columnconfigure(0, weight=1)
         main_frame.rowconfigure(1, weight=1)
-
-        # Reference to each hash's thumbnail objects, to prevent garbage collection
-        self.hash_and_thumbnails = {}
-
-        # Fill the thumbnails frame with duplicate thumbnails
-        self.populate_thumbnails()
-
-        # Spin up the GUI
-        self.tk_root.mainloop()
 
     def scan_for_duplicates(self):
         self.scanning_text.set("Scanning for photo files...")
