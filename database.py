@@ -88,7 +88,7 @@ class Database:
             print(f"Could not insert {filepath} into database: {e}")
             raise
 
-    def remove_filepaths(self, filepaths):
+    def delete_photos(self, filepaths):
         if not filepaths:
             return
 

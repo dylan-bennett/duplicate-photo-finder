@@ -122,7 +122,7 @@ class Interface:
 
         # Remove the entry from the database
         try:
-            self.database.remove_filepaths(filepaths)
+            self.database.delete_photos(filepaths)
         except IntegrityError:
             pass
 
@@ -173,6 +173,11 @@ class Interface:
                     self.database.insert_filepath_and_hash(filepath, file_hash)
                 except IntegrityError:
                     pass
+
+        # Delete from the database any rows that don't have an associated file
+        # # (e.g., the file was deleted)
+        # TODO: USE THE TIMESTAMP APPROACH: https://chatgpt.com/c/691e510e-c638-8332-94c9-01ce82928315
+        # self.database.delete_abandoned_photos(filepaths)
 
         # Update the thumbnails
         self.scanning_text.set("Updating thumbnails...")
