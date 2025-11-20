@@ -40,6 +40,9 @@ class Interface:
         # Fill the thumbnails frame with duplicate thumbnails
         self.populate_thumbnails()
 
+        # Set the scanning text
+        self.scanning_text.set("Click to scan")
+
         # Spin up the GUI
         self.tk_root.mainloop()
 
@@ -319,7 +322,12 @@ class Interface:
         self.hash_and_thumbnails = {}
 
         frame_row = 0
-        for hash, concat_filepaths in db_rows:
+        num_rows = len(db_rows)
+        for i, (hash, concat_filepaths) in enumerate(db_rows, 1):
+            # Update the scanning text at the top
+            self.scanning_text.set(f"Displaying duplicate group {i}/{num_rows}...")
+            self.tk_root.update()  # Final GUI update
+
             # Get the list of filepaths
             filepaths = concat_filepaths.split(",")
 
