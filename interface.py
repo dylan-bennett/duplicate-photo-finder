@@ -1,3 +1,4 @@
+from datetime import datetime
 from sqlite3 import IntegrityError
 from tkinter import E, N, S, StringVar, Tk, W, messagebox, ttk
 
@@ -160,24 +161,39 @@ class Interface:
         # Update the scanning text
         self.scanning_text.set("Scanning for photo files...")
 
+        # Grab the datetime of right now, to stamp all existing files' entries
+        now = datetime.now()
+
         # Hash the photo files and store in the database
         filepaths = self.finder.find_photo_filepaths()
         num_photos = len(filepaths)
         for i, filepath in enumerate(filepaths, 1):
             self.scanning_text.set(f"Analyzing photo {i}/{num_photos}...")
-            file_hash = self.finder.compute_file_hash(filepath)
 
-            # Insert the file path and its hash into the database
-            if file_hash:
+            # Check if the filepath exists in the database. If so, update its timestamp
+            if self.database.check_photo_exists(filepath):
                 try:
-                    self.database.insert_filepath_and_hash(filepath, file_hash)
+                    self.database.update_lastseen(filepath, now)
                 except IntegrityError:
                     pass
 
-        # Delete from the database any rows that don't have an associated file
-        # # (e.g., the file was deleted)
-        # TODO: USE THE TIMESTAMP APPROACH: https://chatgpt.com/c/691e510e-c638-8332-94c9-01ce82928315
-        # self.database.delete_abandoned_photos(filepaths)
+            # Otherwise, create a new entry for it
+            else:
+                file_hash = self.finder.compute_file_hash(filepath)
+
+                # Insert the file path and its hash into the database
+                if file_hash:
+                    try:
+                        self.database.insert_new_photo(filepath, file_hash, now)
+                    except IntegrityError:
+                        pass
+
+        # Any records in the database that didn't get their lastseen column updated
+        # don't exist on the filesystem anymore. They can be purged.
+        try:
+            self.database.delete_stale_photos(now)
+        except IntegrityError:
+            pass
 
         # Update the thumbnails
         self.scanning_text.set("Updating thumbnails...")

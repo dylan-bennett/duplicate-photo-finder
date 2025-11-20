@@ -103,10 +103,6 @@ class Finder:
         If not, it attempts to read the file and compute its MD5 hash.
         If any file read errors occur (IOError or OSError), None is returned.
         """
-        # Check if the file path exists in the database. If it does, skip it
-        if self.database.check_filepath_exists(filepath):
-            return None
-
         # Hash the photo file
         try:
             file_hash = self.hash_file(filepath)

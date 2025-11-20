@@ -18,9 +18,10 @@ class Database:
     def create_db(self):
         """Create the photos table if it doesn't already exist.
 
-        Creates a table named 'photos' with two columns:
+        Creates a table named 'photos' with three columns:
         - filepath: TEXT PRIMARY KEY (unique file path)
         - hash: TEXT NOT NULL (MD5 hash of the file)
+        - lastseen: DATETIME (datetime of when a file was last indexed)
 
         This method is safe to call multiple times as it uses
         CREATE TABLE IF NOT EXISTS.
@@ -29,7 +30,8 @@ class Database:
             """
             CREATE TABLE IF NOT EXISTS photos (
                 filepath TEXT PRIMARY KEY,
-                hash TEXT NOT NULL
+                hash TEXT NOT NULL,
+                lastseen DATETIME
             );
             """
         )
@@ -55,7 +57,7 @@ class Database:
         )
         return self.cursor.fetchall()
 
-    def check_filepath_exists(self, filepath):
+    def check_photo_exists(self, filepath):
         """Check if a file path already exists in the database.
 
         Args:
@@ -69,26 +71,57 @@ class Database:
         )
         return self.cursor.fetchone() is not None
 
-    def insert_filepath_and_hash(self, filepath, file_hash):
+    def insert_new_photo(self, filepath, file_hash, timestamp):
         """Insert a file path and its hash into the database.
 
         Args:
             filepath: The file path to store.
             file_hash: The MD5 hash of the file to store.
+            timestamp: The datetime object for a timestamp.
 
         Commits the transaction after inserting the record. If the filepath
         already exists (as a PRIMARY KEY), this will raise an IntegrityError.
         """
         try:
             self.cursor.execute(
-                "INSERT INTO photos VALUES (?, ?);", (filepath, file_hash)
+                "INSERT INTO photos VALUES (?, ?, ?);", (filepath, file_hash, timestamp)
             )
             self.connection.commit()
         except sqlite3.IntegrityError as e:
             print(f"Could not insert {filepath} into database: {e}")
             raise
 
+    def update_lastseen(self, filepath, timestamp):
+        """
+        Update the 'lastseen' timestamp for a given photo.
+
+        Args:
+            filepath (str): The file path of the photo to update.
+            timestamp (datetime): The new timestamp to set for 'lastseen'.
+
+        Raises:
+            sqlite3.IntegrityError: If the update operation fails.
+        """
+        try:
+            self.cursor.execute(
+                "UPDATE photos SET lastseen = ? WHERE filepath = ?;",
+                (timestamp, filepath),
+            )
+            self.connection.commit()
+        except sqlite3.IntegrityError as e:
+            print(f"Could not update lastseen entry: {e}")
+            raise
+
     def delete_photos(self, filepaths):
+        """
+        Delete photos from the database for a list of file paths.
+
+        Args:
+            filepaths (list[str]): List of file paths to delete from the database.
+
+        Raises:
+            sqlite3.IntegrityError: If the deletion operation fails.
+        """
         if not filepaths:
             return
 
@@ -100,4 +133,23 @@ class Database:
             self.connection.commit()
         except sqlite3.IntegrityError as e:
             print(f"Error deleting entries from database: {e}")
+            raise
+
+    def delete_stale_photos(self, timestamp):
+        """
+        Remove photo records from the database where the 'lastseen'
+        timestamp is older than the provided value.
+
+        Args:
+            timestamp (datetime): Reference datetime. Any records with a 'lastseen'
+                value less than this timestamp will be deleted.
+
+        Raises:
+            sqlite3.IntegrityError: If the deletion operation fails.
+        """
+        try:
+            self.cursor.execute("DELETE FROM photos WHERE lastseen < ?;", (timestamp,))
+            self.connection.commit()
+        except sqlite3.IntegrityError as e:
+            print(f"Error deleting stale entries from database: {e}")
             raise
