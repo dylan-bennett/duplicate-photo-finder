@@ -160,6 +160,7 @@ class Interface:
         """
         # Update the scanning text
         self.scanning_text.set("Scanning for photo files...")
+        self.tk_root.update()  # Force GUI update
 
         # Grab the datetime of right now, to stamp all existing files' entries
         now = datetime.now()
@@ -169,6 +170,7 @@ class Interface:
         num_photos = len(filepaths)
         for i, filepath in enumerate(filepaths, 1):
             self.scanning_text.set(f"Analyzing photo {i}/{num_photos}...")
+            self.tk_root.update()  # Force GUI update so user sees progress
 
             # Check if the filepath exists in the database. If so, update its timestamp
             if self.database.check_photo_exists(filepath):
@@ -197,10 +199,12 @@ class Interface:
 
         # Update the thumbnails
         self.scanning_text.set("Updating thumbnails...")
+        self.tk_root.update()  # Force GUI update before long operation
         self.populate_thumbnails()
 
         # Reset the scanning text
         self.scanning_text.set("Scan complete!")
+        self.tk_root.update()  # Final GUI update
 
     def display_thumbnails_in_frame(self, hash_frame, filepaths):
         """Display photo thumbnails in a grid layout within the given frame.
@@ -264,6 +268,8 @@ class Interface:
             filename = filepath.split("/")[-1]
             filepath_label = ttk.Label(thumbnail_frame, text=filename)
             filepath_label.pack()
+
+            self.tk_root.update()  # Force GUI update
 
             # Increment the row and column
             col += 1
