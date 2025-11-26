@@ -1,3 +1,4 @@
+import math
 import sqlite3
 
 
@@ -14,6 +15,11 @@ class Database:
         """
         self.connection = sqlite3.connect(db_path)
         self.cursor = self.connection.cursor()
+
+        # Pagination
+        self.page_number = 1
+        self.num_pages = 1
+        self.hashes_per_page = 10
 
     def create_db(self):
         """Create the photos table if it doesn't already exist.
@@ -36,6 +42,23 @@ class Database:
             """
         )
 
+    def update_num_pages(self):
+        # Grab the duplicate photos, grouped by hash
+        self.cursor.execute(
+            """SELECT hash, GROUP_CONCAT(filepath)
+            FROM photos
+            GROUP BY hash
+            HAVING COUNT(*) > 1
+            ORDER BY hash
+            """,
+        )
+
+        # Get all the rows
+        rows = self.cursor.fetchall()
+
+        # Calculate the number of pages for pagination
+        self.num_pages = math.ceil(len(rows) / self.hashes_per_page)
+
     def get_duplicate_photos(self):
         """Retrieve all duplicate photos grouped by their hash.
 
@@ -53,8 +76,14 @@ class Database:
             FROM photos
             GROUP BY hash
             HAVING COUNT(*) > 1
-            """
+            ORDER BY hash
+            LIMIT ?
+            OFFSET ?
+            """,
+            (self.hashes_per_page, (self.page_number - 1) * self.hashes_per_page),
         )
+
+        # Get all the rows
         return self.cursor.fetchall()
 
     def check_photo_exists(self, filepath):

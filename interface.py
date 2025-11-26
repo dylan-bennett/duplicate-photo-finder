@@ -34,6 +34,9 @@ class Interface:
         # Instantiate the Tk root window
         self.tk_root = Tk()
 
+        # Update the database pagination info
+        self.database.update_num_pages()
+
         # Create the GUI
         self.create_gui()
 
@@ -93,6 +96,15 @@ class Interface:
         self.thumbnails_container.columnconfigure(0, weight=1)
         self.thumbnails_container.rowconfigure(0, weight=1)
 
+        # Frame that holds the navigation. Stretch it horizontally.
+        navigation_frame = OutlinedFrame(main_frame, height=100)
+        navigation_frame.grid(column=0, row=2, sticky=(E, W))
+
+        # Pagination info
+        self.num_pages_text = StringVar(value=f"{self.database.num_pages} Pages")
+        pages_label = ttk.Label(navigation_frame, textvariable=self.num_pages_text)
+        pages_label.grid(column=0, row=0, padx=5)
+
         # Fill the Tk root window with the main frame
         self.tk_root.columnconfigure(0, weight=1)
         self.tk_root.rowconfigure(0, weight=1)
@@ -103,8 +115,6 @@ class Interface:
 
     def show_delete_confirm_modal(self):
         filepaths = [t.filepath for t in self.selected_thumbnails]
-
-        print(filepaths)
 
         # Show a confirmation modal to the user
         num_photos = len(filepaths)
@@ -199,6 +209,9 @@ class Interface:
             self.database.delete_stale_photos(now)
         except IntegrityError:
             pass
+
+        # Update the database pagination info
+        self.database.update_num_pages()
 
         # Update the thumbnails
         self.scanning_text.set("Updating thumbnails...")
@@ -313,6 +326,11 @@ class Interface:
         """
         # Grab the duplicate photos, grouped by hash
         db_rows = self.database.get_duplicate_photos()
+
+        # Update the pagination UI
+        # self.num_pages_text.set(f"")
+        print(self.database.num_pages, "pages in pagination")
+        self.tk_root.update()
 
         # Remove any previous thumbnail groups
         for child in self.thumbnails_container.frame.winfo_children():
