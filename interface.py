@@ -6,7 +6,7 @@ GUI for displaying duplicate photos, scanning directories, and managing photo de
 
 from datetime import datetime
 from sqlite3 import IntegrityError
-from tkinter import E, N, S, StringVar, TclError, Tk, W, messagebox, ttk
+from tkinter import E, N, S, StringVar, TclError, Tk, W, filedialog, messagebox, ttk
 
 from PIL import Image, ImageTk
 from tktooltip import ToolTip
@@ -42,7 +42,7 @@ class Interface:
         self.tk_root = Tk()
 
         # Update the database pagination info
-        self.database.update_num_pages()
+        self.database.update_num_pages(self.finder.directory_to_scan)
 
         # Create the GUI
         self.create_gui()
@@ -83,7 +83,7 @@ class Interface:
         # Scanning text, stretched horizontally
         self.scanning_text = StringVar(value="Click to scan")
         scanning_label = ttk.Label(controls_frame, textvariable=self.scanning_text)
-        scanning_label.grid(column=1, row=0, padx=5)
+        scanning_label.grid(column=2, row=0, padx=5)
         controls_frame.columnconfigure(1, weight=1)
 
         # Delete button
@@ -93,7 +93,7 @@ class Interface:
             state="disabled",
             command=self.show_delete_confirm_modal,
         )
-        self.delete_button.grid(column=2, row=0, sticky=E)
+        self.delete_button.grid(column=3, row=0, sticky=E)
 
         # Frame that holds the thumbnails. Stretch it in all directions.
         self.thumbnails_container = VerticalScrollFrame(
@@ -114,14 +114,14 @@ class Interface:
             state="disabled",
             command=self.go_to_prev_page,
         )
-        self.prev_page_button.grid(column=0, row=0)
+        self.prev_page_button.grid(column=0, row=0, sticky=E)
 
         # Text displaying number of pages
         self.num_pages_text = StringVar(
             value=f"Page {self.database.page_number} of {self.database.num_pages}"
         )
         pages_label = ttk.Label(navigation_frame, textvariable=self.num_pages_text)
-        pages_label.grid(column=1, row=0, padx=5, sticky=(E, W))
+        pages_label.grid(column=1, row=0, padx=5, sticky=E)
 
         # Next page button
         self.next_page_button = ttk.Button(
@@ -130,7 +130,24 @@ class Interface:
             state="!disabled" if self.database.page_number else "disabled",
             command=self.go_to_next_page,
         )
-        self.next_page_button.grid(column=2, row=0)
+        self.next_page_button.grid(column=2, row=0, sticky=E)
+
+        # Label with the directory we're scanning
+        self.directory_to_scan_text = StringVar(
+            value=f"Selected folder: {self.finder.directory_to_scan}"
+        )
+        directory_to_scan_label = ttk.Label(
+            navigation_frame, textvariable=self.directory_to_scan_text
+        )
+        directory_to_scan_label.grid(column=3, row=0, sticky=W)
+
+        # Select directory button
+        self.select_directory_button = ttk.Button(
+            navigation_frame,
+            text="Select Folder",
+            command=self.open_select_directory_dialog,
+        )
+        self.select_directory_button.grid(column=4, row=0, sticky=W, padx=5)
 
         # Fill the Tk root window with the main frame
         self.tk_root.columnconfigure(0, weight=1)
@@ -139,6 +156,16 @@ class Interface:
         # Fill the main frame with the first column and the thumbnails row
         main_frame.columnconfigure(0, weight=1)
         main_frame.rowconfigure(1, weight=1)
+
+    def open_select_directory_dialog(self):
+        new_dir = filedialog.askdirectory(initialdir=self.finder.directory_to_scan)
+        if new_dir:
+            self.finder.directory_to_scan = new_dir
+
+            self.directory_to_scan_text.set(
+                f"Selected folder: {self.finder.directory_to_scan}"
+            )
+            self.tk_root.update()
 
     def _debounce(self, delay, fn, args=None, kwargs=None):
 
@@ -342,7 +369,7 @@ class Interface:
             pass
 
         # Update the database pagination info
-        self.database.update_num_pages()
+        self.database.update_num_pages(self.finder.directory_to_scan)
 
         # Update the thumbnails
         self.scanning_text.set("Updating thumbnails...")
@@ -476,7 +503,7 @@ class Interface:
         """
 
         # Grab the duplicate photos, grouped by hash
-        db_rows = self.database.query_database()
+        db_rows = self.database.query_database(self.finder.directory_to_scan)
 
         # Remove any previous thumbnail groups
         for child in self.thumbnails_container.frame.winfo_children():

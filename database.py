@@ -49,7 +49,7 @@ class Database:
             """
         )
 
-    def update_num_pages(self):
+    def update_num_pages(self, directory_to_scan):
         """Update pagination information based on current duplicate groups.
 
         Queries the database for all duplicate photo groups (hashes that appear
@@ -61,10 +61,12 @@ class Database:
         self.cursor.execute(
             """SELECT hash, GROUP_CONCAT(filepath)
             FROM photos
+            WHERE filepath LIKE ?
             GROUP BY hash
             HAVING COUNT(*) > 1
             ORDER BY hash
             """,
+            (str(directory_to_scan) + "%",),
         )
 
         # Get all the rows
@@ -74,7 +76,7 @@ class Database:
         self.num_pages = math.ceil(len(rows) / self.hashes_per_page)
         self.page_number = min(1, self.num_pages)
 
-    def query_database(self):
+    def query_database(self, directory_to_scan):
         """Retrieve all duplicate photos grouped by their hash.
 
         Returns:
@@ -89,13 +91,18 @@ class Database:
         self.cursor.execute(
             """SELECT hash, GROUP_CONCAT(filepath)
             FROM photos
+            WHERE filepath LIKE ?
             GROUP BY hash
             HAVING COUNT(*) > 1
             ORDER BY hash
             LIMIT ?
             OFFSET ?
             """,
-            (self.hashes_per_page, (self.page_number - 1) * self.hashes_per_page),
+            (
+                str(directory_to_scan) + "%",
+                self.hashes_per_page,
+                (self.page_number - 1) * self.hashes_per_page,
+            ),
         )
 
         # Get all the rows

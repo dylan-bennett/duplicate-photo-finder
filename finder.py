@@ -6,13 +6,14 @@ computing MD5 hashes to identify duplicates, and managing file deletion operatio
 
 import hashlib
 import os
+from pathlib import Path
 
 import imagehash
 from PIL import Image
 
 
 class Finder:
-    def __init__(self, database, directory_to_scan):
+    def __init__(self, database, directory_to_scan=None):
         """Initialize the Finder with a database and directory to scan.
 
         Args:
@@ -22,7 +23,7 @@ class Finder:
         Sets up the finder with supported image extensions (.png, .jpg, .jpeg,
         .gif, .bmp) and stores references to the database and scan directory.
         """
-        self.directory_to_scan = directory_to_scan
+        self.directory_to_scan = directory_to_scan or Path.home()
         self.valid_image_extensions = {".png", ".jpg", ".jpeg", ".gif", ".bmp"}
         self.database = database
 

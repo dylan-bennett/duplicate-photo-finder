@@ -29,7 +29,7 @@ class DuplicatePhotoFinder:
         db_name = "photos.db"
         self.db_path = f"{full_path}/{db_name}"
 
-        self.directory_to_scan = "/home/dylan/Pictures"
+        # self.directory_to_scan = "/home/dylan/Pictures"
 
         self.database = None
         self.finder = None
@@ -53,9 +53,7 @@ class DuplicatePhotoFinder:
         their hashes to identify duplicates.
         """
         # Instantiate the Finder
-        self.finder = Finder(
-            database=self.database, directory_to_scan=self.directory_to_scan
-        )
+        self.finder = Finder(database=self.database)
 
     def init_interface(self):
         """Initialize the graphical user interface.
