@@ -100,10 +100,30 @@ class Interface:
         navigation_frame = OutlinedFrame(main_frame, height=100)
         navigation_frame.grid(column=0, row=2, sticky=(E, W))
 
-        # Pagination info
-        self.num_pages_text = StringVar(value=f"{self.database.num_pages} Pages")
+        # Previous page button
+        self.prev_page_button = ttk.Button(
+            navigation_frame,
+            text="Prev Page",
+            state="disabled",
+            command=self.go_to_prev_page,
+        )
+        self.prev_page_button.grid(column=0, row=0)
+
+        # Text displaying number of pages
+        self.num_pages_text = StringVar(
+            value=f"Page {self.database.page_number} of {self.database.num_pages}"
+        )
         pages_label = ttk.Label(navigation_frame, textvariable=self.num_pages_text)
-        pages_label.grid(column=0, row=0, padx=5)
+        pages_label.grid(column=1, row=0, padx=5)
+
+        # Next page button
+        self.next_page_button = ttk.Button(
+            navigation_frame,
+            text="Next Page",
+            state="!disabled",
+            command=self.go_to_next_page,
+        )
+        self.next_page_button.grid(column=2, row=0)
 
         # Fill the Tk root window with the main frame
         self.tk_root.columnconfigure(0, weight=1)
@@ -112,6 +132,32 @@ class Interface:
         # Fill the main frame with the first column and the thumbnails row
         main_frame.columnconfigure(0, weight=1)
         main_frame.rowconfigure(1, weight=1)
+
+    def go_to_prev_page(self):
+        self.database.page_number = max(1, self.database.page_number - 1)
+        self.update_prev_next_button_states()
+        self.populate_thumbnails()
+
+    def go_to_next_page(self):
+        self.database.page_number = min(
+            self.database.page_number + 1, self.database.num_pages
+        )
+        self.update_prev_next_button_states()
+        self.populate_thumbnails()
+
+    def update_prev_next_button_states(self):
+        self.prev_page_button.state(
+            ["disabled" if self.database.page_number <= 1 else "!disabled"]
+        )
+        self.next_page_button.state(
+            [
+                (
+                    "disabled"
+                    if self.database.page_number >= self.database.num_pages
+                    else "!disabled"
+                )
+            ]
+        )
 
     def show_delete_confirm_modal(self):
         filepaths = [t.filepath for t in self.selected_thumbnails]
@@ -328,8 +374,10 @@ class Interface:
         db_rows = self.database.get_duplicate_photos()
 
         # Update the pagination UI
-        # self.num_pages_text.set(f"")
-        print(self.database.num_pages, "pages in pagination")
+        self.num_pages_text.set(
+            f"Page {self.database.page_number} of {self.database.num_pages}"
+        )
+        print(f"Page {self.database.page_number} of {self.database.num_pages}")
         self.tk_root.update()
 
         # Remove any previous thumbnail groups
