@@ -27,6 +27,7 @@ class Interface:
         """
         self.finder = finder
         self.database = database
+        self._debounce_running = None
 
         # Number of columns the thumbnails should take up at max
         self.thumbnails_cols = 4
@@ -139,6 +140,27 @@ class Interface:
         main_frame.columnconfigure(0, weight=1)
         main_frame.rowconfigure(1, weight=1)
 
+    def _debounce(self, delay, fn, args=None, kwargs=None):
+
+        if self._debounce_running is not None:
+            self.tk_root.after_cancel(self._debounce_running)
+
+        self._debounce_running = self.tk_root.after(
+            delay,
+            lambda fn=fn, args=args, kwargs=kwargs: self._call_debounce_fn(
+                fn, args, kwargs
+            ),
+        )
+
+    def _call_debounce_fn(self, fn, args=None, kwargs=None):
+        if args is None:
+            args = []
+        if kwargs is None:
+            kwargs = {}
+
+        fn(*args, **kwargs)
+        self._debounce_running = None
+
     def go_to_prev_page(self):
         """Navigate to the previous page of duplicate photo groups.
 
@@ -148,7 +170,7 @@ class Interface:
         self.database.page_number = max(1, self.database.page_number - 1)
         self.update_prev_next_button_states()
         self.update_num_pages_label()
-        self.display_thumbnails()
+        self._debounce(500, self.display_thumbnails)
 
     def go_to_next_page(self):
         """Navigate to the next page of duplicate photo groups.
@@ -161,7 +183,7 @@ class Interface:
         )
         self.update_prev_next_button_states()
         self.update_num_pages_label()
-        self.display_thumbnails()
+        self._debounce(500, self.display_thumbnails)
 
     def update_prev_next_button_states(self):
         """Update the enabled/disabled state of pagination buttons.
