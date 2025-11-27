@@ -58,6 +58,7 @@ class Database:
 
         # Calculate the number of pages for pagination
         self.num_pages = math.ceil(len(rows) / self.hashes_per_page)
+        self.page_number = min(1, self.num_pages)
 
     def query_database(self):
         """Retrieve all duplicate photos grouped by their hash.
@@ -183,3 +184,57 @@ class Database:
         except sqlite3.IntegrityError as e:
             print(f"Error deleting stale entries from database: {e}")
             raise
+
+    def get_existing_filepaths(self, filepaths):
+        """
+        Get a set of filepaths that already exist in the database.
+
+        Args:
+            filepaths: List of file paths to check.
+
+        Returns:
+            set: Set of filepaths that exist in the database.
+        """
+        if not filepaths:
+            return set()
+
+        placeholders = ",".join("?" * len(filepaths))
+        self.cursor.execute(
+            f"SELECT filepath FROM photos WHERE filepath IN ({placeholders});",
+            list(filepaths),
+        )
+        return {row[0] for row in self.cursor.fetchall()}
+
+    def batch_update_lastseen(self, filepaths, timestamp):
+        """
+        Batch update the 'lastseen' timestamp for multiple photos.
+
+        Args:
+            filepaths: List of file paths to update.
+            timestamp: The new timestamp to set for 'lastseen'.
+        """
+        if not filepaths:
+            return
+
+        placeholders = ",".join("?" * len(filepaths))
+        self.cursor.execute(
+            f"UPDATE photos SET lastseen = ? WHERE filepath IN ({placeholders});",
+            [timestamp] + list(filepaths),
+        )
+        self.connection.commit()
+
+    def batch_insert_new_photos(self, photo_data):
+        """
+        Batch insert multiple new photos into the database.
+
+        Args:
+            photo_data: List of tuples, each containing (filepath, hash, timestamp).
+        """
+        if not photo_data:
+            return
+
+        self.cursor.executemany(
+            "INSERT INTO photos VALUES (?, ?, ?);",
+            photo_data,
+        )
+        self.connection.commit()

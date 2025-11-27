@@ -120,7 +120,7 @@ class Interface:
         self.next_page_button = ttk.Button(
             navigation_frame,
             text="Next Page",
-            state="!disabled",
+            state="!disabled" if self.database.page_number else "disabled",
             command=self.go_to_next_page,
         )
         self.next_page_button.grid(column=2, row=0)
@@ -233,28 +233,46 @@ class Interface:
 
         # Hash the photo files and store in the database
         filepaths = self.finder.find_photo_filepaths()
-        num_photos = len(filepaths)
-        for i, filepath in enumerate(filepaths, 1):
-            self.scanning_text.set(f"Analyzing photo {i}/{num_photos}...")
-            self.tk_root.update()  # Force GUI update so user sees progress
 
-            # Check if the filepath exists in the database. If so, update its timestamp
-            if self.database.check_photo_exists(filepath):
-                try:
-                    self.database.update_lastseen(filepath, now)
-                except IntegrityError:
-                    pass
+        if not filepaths:
+            return
 
-            # Otherwise, create a new entry for it
-            else:
-                file_hash = self.finder.compute_file_hash(filepath)
+        # Batch check which filepaths already exist in the database
+        self.scanning_text.set("Checking existing files...")
+        self.tk_root.update()
+        existing_filepaths = self.database.get_existing_filepaths(filepaths)
 
-                # Insert the file path and its hash into the database
-                if file_hash:
-                    try:
-                        self.database.insert_new_photo(filepath, file_hash, now)
-                    except IntegrityError:
-                        pass
+        # Separate files into existing and new
+        new_filepaths = [fp for fp in filepaths if fp not in existing_filepaths]
+        files_to_update = list(existing_filepaths)
+
+        # Batch update all existing files
+        if files_to_update:
+            try:
+                self.database.batch_update_lastseen(files_to_update, now)
+            except IntegrityError:
+                pass
+
+        # Process new files: compute hashes and prepare for batch insert
+        new_photos_data = []
+        for i, filepath in enumerate(new_filepaths, 1):
+            # Update GUI every 50 files to reduce overhead
+            if i % 50 == 0 or i == len(new_filepaths):
+                self.scanning_text.set(
+                    f"Analyzing new photos {i}/{len(new_filepaths)}..."
+                )
+                self.tk_root.update()
+
+            file_hash = self.finder.compute_file_hash(filepath)
+            if file_hash:
+                new_photos_data.append((filepath, file_hash, now))
+
+        # Batch insert all new photos
+        if new_photos_data:
+            try:
+                self.database.batch_insert_new_photos(new_photos_data)
+            except IntegrityError:
+                pass
 
         # Any records in the database that didn't get their lastseen column updated
         # don't exist on the filesystem anymore. They can be purged.
@@ -270,6 +288,10 @@ class Interface:
         self.scanning_text.set("Updating thumbnails...")
         self.tk_root.update()  # Force GUI update before long operation
         self.display_thumbnails()
+
+        # Update the pagination UI
+        self.update_prev_next_button_states()
+        self.update_num_pages_label()
 
         # Reset the scanning text
         self.scanning_text.set("Scan complete!")
