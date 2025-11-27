@@ -1,6 +1,6 @@
 from datetime import datetime
 from sqlite3 import IntegrityError
-from tkinter import E, N, S, StringVar, Tk, W, messagebox, ttk
+from tkinter import E, N, S, StringVar, TclError, Tk, W, messagebox, ttk
 
 from PIL import Image, ImageTk
 from tktooltip import ToolTip
@@ -41,7 +41,7 @@ class Interface:
         self.create_gui()
 
         # Fill the thumbnails frame with duplicate thumbnails
-        self.populate_thumbnails()
+        self.display_thumbnails()
 
         # Set the scanning text
         self.scanning_text.set("Click to scan")
@@ -114,7 +114,7 @@ class Interface:
             value=f"Page {self.database.page_number} of {self.database.num_pages}"
         )
         pages_label = ttk.Label(navigation_frame, textvariable=self.num_pages_text)
-        pages_label.grid(column=1, row=0, padx=5)
+        pages_label.grid(column=1, row=0, padx=5, sticky=(E, W))
 
         # Next page button
         self.next_page_button = ttk.Button(
@@ -136,14 +136,16 @@ class Interface:
     def go_to_prev_page(self):
         self.database.page_number = max(1, self.database.page_number - 1)
         self.update_prev_next_button_states()
-        self.populate_thumbnails()
+        self.update_num_pages_label()
+        self.display_thumbnails()
 
     def go_to_next_page(self):
         self.database.page_number = min(
             self.database.page_number + 1, self.database.num_pages
         )
         self.update_prev_next_button_states()
-        self.populate_thumbnails()
+        self.update_num_pages_label()
+        self.display_thumbnails()
 
     def update_prev_next_button_states(self):
         self.prev_page_button.state(
@@ -158,6 +160,13 @@ class Interface:
                 )
             ]
         )
+
+    def update_num_pages_label(self):
+        # Update the pagination UI
+        self.num_pages_text.set(
+            f"Page {self.database.page_number} of {self.database.num_pages}"
+        )
+        self.tk_root.update()
 
     def show_delete_confirm_modal(self):
         filepaths = [t.filepath for t in self.selected_thumbnails]
@@ -191,7 +200,7 @@ class Interface:
 
         # Update the thumbnails
         self.scanning_text.set("Updating thumbnails...")
-        self.populate_thumbnails()
+        self.display_thumbnails()
 
         # Reset the scanning text
         self.scanning_text.set("Scan complete!")
@@ -262,7 +271,7 @@ class Interface:
         # Update the thumbnails
         self.scanning_text.set("Updating thumbnails...")
         self.tk_root.update()  # Force GUI update before long operation
-        self.populate_thumbnails()
+        self.display_thumbnails()
 
         # Reset the scanning text
         self.scanning_text.set("Scan complete!")
@@ -306,32 +315,35 @@ class Interface:
 
             # Create a frame for the thumbnail. We'll change its border
             # to indicate selected/deselecated
-            thumbnail_frame = ttk.Frame(hash_frame, relief="flat", borderwidth=3)
-            thumbnail_frame.grid(row=row, column=col, padx=5, pady=5)
+            try:
+                thumbnail_frame = ttk.Frame(hash_frame, relief="flat", borderwidth=3)
+                thumbnail_frame.grid(row=row, column=col, padx=5, pady=5)
 
-            # Display the thumbnail within the frame
-            thumbnail_label = ttk.Label(thumbnail_frame, image=thumbnail)
-            thumbnail_label.pack()
+                # Display the thumbnail within the frame
+                thumbnail_label = ttk.Label(thumbnail_frame, image=thumbnail)
+                thumbnail_label.pack()
 
-            # Add in filepath and frame attributes to the Label, for later reference
-            thumbnail_label.filepath = filepath
-            thumbnail_label.thumbnail_frame = thumbnail_frame
+                # Add in filepath and frame attributes to the Label, for later reference
+                thumbnail_label.filepath = filepath
+                thumbnail_label.thumbnail_frame = thumbnail_frame
 
-            # Bind a click event to the Label, to toggle selection
-            thumbnail_label.bind(
-                "<Button-1>",
-                lambda e, lbl=thumbnail_label: self.toggle_thumbnail_selection(lbl),
-            )
+                # Bind a click event to the Label, to toggle selection
+                thumbnail_label.bind(
+                    "<Button-1>",
+                    lambda e, lbl=thumbnail_label: self.toggle_thumbnail_selection(lbl),
+                )
 
-            # Add a tooltip to the thumbnail
-            ToolTip(thumbnail_label, msg=filepath)
+                # Add a tooltip to the thumbnail
+                ToolTip(thumbnail_label, msg=filepath)
 
-            # Add the filepath underneath the thumbnail
-            filename = filepath.split("/")[-1]
-            filepath_label = ttk.Label(thumbnail_frame, text=filename)
-            filepath_label.pack()
+                # Add the filepath underneath the thumbnail
+                filename = filepath.split("/")[-1]
+                filepath_label = ttk.Label(thumbnail_frame, text=filename)
+                filepath_label.pack()
 
-            self.tk_root.update()  # Force GUI update
+                self.tk_root.update()  # Force GUI update
+            except TclError:
+                pass
 
             # Increment the row and column
             col += 1
@@ -362,7 +374,7 @@ class Interface:
             ["disabled" if len(self.selected_thumbnails) == 0 else "!disabled"]
         )
 
-    def populate_thumbnails(self):
+    def display_thumbnails(self):
         """Populate the thumbnails container with duplicate photos from the database.
 
         Retrieves all duplicate photos grouped by hash from the database,
@@ -371,14 +383,7 @@ class Interface:
         prevent garbage collection.
         """
         # Grab the duplicate photos, grouped by hash
-        db_rows = self.database.get_duplicate_photos()
-
-        # Update the pagination UI
-        self.num_pages_text.set(
-            f"Page {self.database.page_number} of {self.database.num_pages}"
-        )
-        print(f"Page {self.database.page_number} of {self.database.num_pages}")
-        self.tk_root.update()
+        db_rows = self.database.query_database()
 
         # Remove any previous thumbnail groups
         for child in self.thumbnails_container.frame.winfo_children():
@@ -387,7 +392,7 @@ class Interface:
         # Will need to save the thumbnail objects, to avoid garbage collection
         self.hash_and_thumbnails = {}
 
-        frame_row = 0
+        row_index = 0
         num_rows = len(db_rows)
         for i, (hash, concat_filepaths) in enumerate(db_rows, 1):
             # Update the scanning text at the top
@@ -399,18 +404,18 @@ class Interface:
 
             # Create a new Frame for the hash's thumbnails
             hash_frame = ttk.Frame(self.thumbnails_container.frame)
-            hash_frame.grid(row=frame_row, column=0, sticky=(W))
-            frame_row += 1
+            hash_frame.grid(row=row_index, column=0, sticky=(W))
+            row_index += 1
+
+            # Put the thumbnails into the frame
+            thumbnails = self.display_thumbnails_in_frame(hash_frame, filepaths)
 
             # Put in a visual separator spanning the full width of the frame
             separator = ttk.Separator(
                 self.thumbnails_container.frame, orient="horizontal"
             )
-            separator.grid(row=frame_row, column=0, sticky=(E, W), padx=10, pady=5)
-            frame_row += 1
-
-            # Put the thumbnails into the frame
-            thumbnails = self.display_thumbnails_in_frame(hash_frame, filepaths)
+            separator.grid(row=row_index, column=0, sticky=(E, W), padx=10, pady=5)
+            row_index += 1
 
             # Save the thumbnail objects, to avoid garbage collection
             self.hash_and_thumbnails[hash] = thumbnails

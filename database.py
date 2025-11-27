@@ -59,7 +59,7 @@ class Database:
         # Calculate the number of pages for pagination
         self.num_pages = math.ceil(len(rows) / self.hashes_per_page)
 
-    def get_duplicate_photos(self):
+    def query_database(self):
         """Retrieve all duplicate photos grouped by their hash.
 
         Returns:
