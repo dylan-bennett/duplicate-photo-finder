@@ -1,3 +1,10 @@
+"""Database management for storing and querying photo metadata.
+
+This module provides the Database class for managing SQLite database operations
+including storing photo file paths, hashes, and timestamps, as well as querying
+for duplicate photos with pagination support.
+"""
+
 import math
 import sqlite3
 
@@ -43,6 +50,13 @@ class Database:
         )
 
     def update_num_pages(self):
+        """Update pagination information based on current duplicate groups.
+
+        Queries the database for all duplicate photo groups (hashes that appear
+        more than once), calculates the total number of pages based on
+        hashes_per_page, and updates the page_number to ensure it doesn't exceed
+        the total number of pages.
+        """
         # Grab the duplicate photos, grouped by hash
         self.cursor.execute(
             """SELECT hash, GROUP_CONCAT(filepath)
@@ -86,61 +100,6 @@ class Database:
 
         # Get all the rows
         return self.cursor.fetchall()
-
-    def check_photo_exists(self, filepath):
-        """Check if a file path already exists in the database.
-
-        Args:
-            filepath: The file path to check for existence.
-
-        Returns:
-            bool: True if the filepath exists in the database, False otherwise.
-        """
-        self.cursor.execute(
-            "SELECT filepath FROM photos WHERE filepath = ?;", (filepath,)
-        )
-        return self.cursor.fetchone() is not None
-
-    def insert_new_photo(self, filepath, file_hash, timestamp):
-        """Insert a file path and its hash into the database.
-
-        Args:
-            filepath: The file path to store.
-            file_hash: The MD5 hash of the file to store.
-            timestamp: The datetime object for a timestamp.
-
-        Commits the transaction after inserting the record. If the filepath
-        already exists (as a PRIMARY KEY), this will raise an IntegrityError.
-        """
-        try:
-            self.cursor.execute(
-                "INSERT INTO photos VALUES (?, ?, ?);", (filepath, file_hash, timestamp)
-            )
-            self.connection.commit()
-        except sqlite3.IntegrityError as e:
-            print(f"Could not insert {filepath} into database: {e}")
-            raise
-
-    def update_lastseen(self, filepath, timestamp):
-        """
-        Update the 'lastseen' timestamp for a given photo.
-
-        Args:
-            filepath (str): The file path of the photo to update.
-            timestamp (datetime): The new timestamp to set for 'lastseen'.
-
-        Raises:
-            sqlite3.IntegrityError: If the update operation fails.
-        """
-        try:
-            self.cursor.execute(
-                "UPDATE photos SET lastseen = ? WHERE filepath = ?;",
-                (timestamp, filepath),
-            )
-            self.connection.commit()
-        except sqlite3.IntegrityError as e:
-            print(f"Could not update lastseen entry: {e}")
-            raise
 
     def delete_photos(self, filepaths):
         """

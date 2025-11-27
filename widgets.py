@@ -1,3 +1,9 @@
+"""Custom Tkinter widgets for the duplicate photo finder GUI.
+
+This module provides custom widget classes including OutlinedFrame for
+bordered frames and VerticalScrollFrame for scrollable content containers.
+"""
+
 from tkinter import VERTICAL, Canvas, E, N, S, W, ttk
 
 

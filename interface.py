@@ -1,3 +1,9 @@
+"""Graphical user interface for the duplicate photo finder application.
+
+This module provides the Interface class which creates and manages a Tkinter-based
+GUI for displaying duplicate photos, scanning directories, and managing photo deletion.
+"""
+
 from datetime import datetime
 from sqlite3 import IntegrityError
 from tkinter import E, N, S, StringVar, TclError, Tk, W, messagebox, ttk
@@ -134,12 +140,22 @@ class Interface:
         main_frame.rowconfigure(1, weight=1)
 
     def go_to_prev_page(self):
+        """Navigate to the previous page of duplicate photo groups.
+
+        Decrements the current page number (minimum 1), updates button states,
+        updates the page label, and refreshes the thumbnail display.
+        """
         self.database.page_number = max(1, self.database.page_number - 1)
         self.update_prev_next_button_states()
         self.update_num_pages_label()
         self.display_thumbnails()
 
     def go_to_next_page(self):
+        """Navigate to the next page of duplicate photo groups.
+
+        Increments the current page number (maximum num_pages), updates button
+        states, updates the page label, and refreshes the thumbnail display.
+        """
         self.database.page_number = min(
             self.database.page_number + 1, self.database.num_pages
         )
@@ -148,6 +164,11 @@ class Interface:
         self.display_thumbnails()
 
     def update_prev_next_button_states(self):
+        """Update the enabled/disabled state of pagination buttons.
+
+        Disables the "Previous" button when on page 1, and disables the
+        "Next" button when on the last page. Enables both buttons otherwise.
+        """
         self.prev_page_button.state(
             ["disabled" if self.database.page_number <= 1 else "!disabled"]
         )
@@ -162,6 +183,11 @@ class Interface:
         )
 
     def update_num_pages_label(self):
+        """Update the pagination label text with current page information.
+
+        Sets the label text to show the current page number and total number
+        of pages, then forces a GUI update to reflect the change.
+        """
         # Update the pagination UI
         self.num_pages_text.set(
             f"Page {self.database.page_number} of {self.database.num_pages}"
@@ -169,6 +195,12 @@ class Interface:
         self.tk_root.update()
 
     def show_delete_confirm_modal(self):
+        """Display a confirmation dialog before deleting selected photos.
+
+        Shows a yes/no dialog asking the user to confirm deletion of the
+        currently selected photos. If the user confirms, calls
+        delete_selected_photos() to perform the deletion.
+        """
         # Show a confirmation modal to the user
         num_photos = len(self.selected_filepaths)
         response = messagebox.askyesno(
@@ -184,6 +216,12 @@ class Interface:
             self.delete_selected_photos()
 
     def delete_selected_photos(self):
+        """Delete the selected photos from disk and database.
+
+        Removes the selected photo files from the filesystem, deletes their
+        database entries, updates the thumbnail display, and shows a success
+        message. Clears the selection after deletion is complete.
+        """
         # Delete the photos from the hard drive
         self.finder.delete_selected_photos(self.selected_filepaths)
 
@@ -381,6 +419,19 @@ class Interface:
         return thumbnails
 
     def toggle_filepath_selection(self, filepath, thumbnail_frame):
+        """Toggle the selection state of a photo thumbnail.
+
+        Args:
+            filepath: Path to the photo file to toggle selection for.
+            thumbnail_frame: Tkinter Frame widget containing the thumbnail.
+                The frame's relief is updated to visually indicate selection
+                state (solid for selected, flat for unselected).
+
+        If the filepath is already selected, it is removed from the selection
+        and the frame border is set to flat. If not selected, it is added to
+        the selection and the frame border is set to solid. The delete button
+        is enabled if any photos are selected, disabled otherwise.
+        """
         if filepath in self.selected_filepaths:
             self.selected_filepaths.remove(filepath)
             thumbnail_frame.configure(relief="flat")

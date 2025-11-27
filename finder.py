@@ -1,3 +1,9 @@
+"""Photo file discovery and hashing functionality.
+
+This module provides the Finder class for locating photo files in a directory,
+computing MD5 hashes to identify duplicates, and managing file deletion operations.
+"""
+
 import hashlib
 import os
 
@@ -46,6 +52,16 @@ class Finder:
         return filepaths
 
     def delete_selected_photos(self, filepaths):
+        """Delete photo files from the filesystem.
+
+        Args:
+            filepaths: Iterable of file paths to delete.
+
+        Attempts to delete each file path from the filesystem. If a file
+        doesn't exist, it is skipped with a warning message. If deletion
+        fails due to an OSError, the error is printed and the next file
+        is processed.
+        """
         for filepath in filepaths:
             if os.path.exists(filepath):
                 # Delete the photo from the system

@@ -1,3 +1,9 @@
+"""Main entry point for the duplicate photo finder application.
+
+This module provides the DuplicatePhotoFinder class which orchestrates the
+initialization and execution of the database, finder, and interface components.
+"""
+
 from pathlib import Path
 
 from database import Database
