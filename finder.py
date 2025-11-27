@@ -7,6 +7,9 @@ computing MD5 hashes to identify duplicates, and managing file deletion operatio
 import hashlib
 import os
 
+import imagehash
+from PIL import Image
+
 
 class Finder:
     def __init__(self, database, directory_to_scan):
@@ -104,6 +107,13 @@ class Finder:
             print(f"Warning: Could not read file {filepath}: {e}")
             raise
 
+    def dhash_file(self, filepath):
+        try:
+            return str(imagehash.dhash(Image.open(filepath)))
+        except Exception as e:
+            print(f"Problem {e} with {filepath}")
+            raise
+
     def compute_file_hash(self, filepath):
         """Compute the MD5 hash of a file if not already present in the database.
 
@@ -121,7 +131,8 @@ class Finder:
         """
         # Hash the photo file
         try:
-            file_hash = self.hash_file(filepath)
+            # file_hash = self.hash_file(filepath)
+            file_hash = self.dhash_file(filepath)
         except (IOError, OSError):
             return None
 
