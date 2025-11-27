@@ -4,7 +4,9 @@ This module provides the Interface class which creates and manages a Tkinter-bas
 GUI for displaying duplicate photos, scanning directories, and managing photo deletion.
 """
 
+from concurrent.futures import ProcessPoolExecutor, as_completed
 from datetime import datetime
+from os import cpu_count
 from sqlite3 import IntegrityError
 from tkinter import E, N, S, StringVar, TclError, Tk, W, filedialog, messagebox, ttk
 
@@ -12,6 +14,27 @@ from PIL import Image, ImageTk
 from tktooltip import ToolTip
 
 from widgets import OutlinedFrame, VerticalScrollFrame
+
+
+def _compute_file_hash_worker(filepath):
+    """Worker function for multiprocessing to compute file hash.
+
+    This function must be at module level to be picklable for multiprocessing.
+
+    Args:
+        filepath: Path to the file to hash.
+
+    Returns:
+        tuple: (filepath, hash) if successful, (filepath, None) if failed.
+    """
+    import imagehash
+    from PIL import Image
+
+    try:
+        file_hash = str(imagehash.dhash(Image.open(filepath)))
+        return (filepath, file_hash)
+    except Exception:
+        return (filepath, None)
 
 
 class Interface:
@@ -342,17 +365,43 @@ class Interface:
 
         # Process new files: compute hashes and prepare for batch insert
         new_photos_data = []
-        for i, filepath in enumerate(new_filepaths, 1):
-            # Update GUI every 50 files to reduce overhead
-            if i % 50 == 0 or i == len(new_filepaths):
-                self.scanning_text.set(
-                    f"Analyzing new photos {i}/{len(new_filepaths)}..."
-                )
-                self.tk_root.update()
+        if new_filepaths:
+            # Use multiprocessing to hash files in parallel
+            # Determine optimal number of workers
+            # (use CPU count, but cap at reasonable limit)
+            max_workers = min(cpu_count() or 4, len(new_filepaths), 8)
 
-            file_hash = self.finder.compute_file_hash(filepath)
-            if file_hash:
-                new_photos_data.append((filepath, file_hash, now))
+            completed_count = 0
+            with ProcessPoolExecutor(max_workers=max_workers) as executor:
+                # Submit all hashing tasks
+                future_to_filepath = {
+                    executor.submit(_compute_file_hash_worker, filepath): filepath
+                    for filepath in new_filepaths
+                }
+
+                # Process results as they complete
+                for future in as_completed(future_to_filepath):
+                    completed_count += 1
+
+                    # Update GUI every 50 files to reduce overhead
+                    should_update = completed_count % 50 == 0 or completed_count == len(
+                        new_filepaths
+                    )
+                    if should_update:
+                        self.scanning_text.set(
+                            f"Analyzing new photos "
+                            f"{completed_count}/{len(new_filepaths)}..."
+                        )
+                        self.tk_root.update()
+
+                    try:
+                        filepath, file_hash = future.result()
+                        if file_hash:
+                            new_photos_data.append((filepath, file_hash, now))
+                    except Exception as e:
+                        # Handle any errors from the worker process
+                        print(f"Error processing {future_to_filepath[future]}: {e}")
+                        continue
 
         # Batch insert all new photos
         if new_photos_data:
@@ -410,6 +459,14 @@ class Interface:
 
                 # Convert it into a thumbnail
                 img.thumbnail((200, 200))
+
+                # If image has alpha channel, convert to RGBA and then to RGB with white background
+                if img.mode in ("RGBA", "LA"):
+                    background = Image.new("RGB", img.size, (255, 255, 255))
+                    background.paste(img, mask=img.split()[-1])  # Use alpha channel as mask
+                    img = background
+                elif img.mode != "RGB":
+                    img = img.convert("RGB")
 
                 # Create a Tkinter-compatible photo image object
                 thumbnail = ImageTk.PhotoImage(img)
