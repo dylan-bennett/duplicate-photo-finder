@@ -157,7 +157,8 @@ class Database:
         try:
             placeholders = ",".join("?" * len(filepaths))
             self.cursor.execute(
-                f"DELETE FROM photos WHERE filepath IN ({placeholders});", filepaths
+                f"DELETE FROM photos WHERE filepath IN ({placeholders});",
+                list(filepaths),
             )
             self.connection.commit()
         except sqlite3.IntegrityError as e:

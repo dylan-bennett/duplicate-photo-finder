@@ -29,7 +29,7 @@ class Interface:
         self.hash_and_thumbnails = {}
 
         # List of selected thumbnails
-        self.selected_thumbnails = []
+        self.selected_filepaths = set()
 
         # Instantiate the Tk root window
         self.tk_root = Tk()
@@ -169,10 +169,8 @@ class Interface:
         self.tk_root.update()
 
     def show_delete_confirm_modal(self):
-        filepaths = [t.filepath for t in self.selected_thumbnails]
-
         # Show a confirmation modal to the user
-        num_photos = len(filepaths)
+        num_photos = len(self.selected_filepaths)
         response = messagebox.askyesno(
             title="Confirm Delete Photos",
             message=(
@@ -183,15 +181,15 @@ class Interface:
 
         # If Yes is selected
         if response is True:
-            self.delete_selected_photos(filepaths)
+            self.delete_selected_photos()
 
-    def delete_selected_photos(self, filepaths):
+    def delete_selected_photos(self):
         # Delete the photos from the hard drive
-        self.finder.delete_selected_photos(filepaths)
+        self.finder.delete_selected_photos(self.selected_filepaths)
 
         # Remove the entry from the database
         try:
-            self.database.delete_photos(filepaths)
+            self.database.delete_photos(self.selected_filepaths)
         except IntegrityError:
             pass
 
@@ -206,7 +204,7 @@ class Interface:
         self.scanning_text.set("Scan complete!")
 
         # Let the user know that the files have been deleted
-        num_photos = len(filepaths)
+        num_photos = len(self.selected_filepaths)
         messagebox.showinfo(
             title="Photos Deleted!",
             message=(
@@ -216,7 +214,7 @@ class Interface:
         )
 
         # Clear out the selected photos list
-        self.selected_thumbnails = []
+        self.selected_filepaths.clear()
 
     def scan_for_duplicates(self):
         """Scan for duplicate photos and update the display.
@@ -316,7 +314,11 @@ class Interface:
             # Create a frame for the thumbnail. We'll change its border
             # to indicate selected/deselecated
             try:
-                thumbnail_frame = ttk.Frame(hash_frame, relief="flat", borderwidth=3)
+                thumbnail_frame = ttk.Frame(
+                    hash_frame,
+                    borderwidth=3,
+                    relief="solid" if filepath in self.selected_filepaths else "flat",
+                )
                 thumbnail_frame.grid(row=row, column=col, padx=5, pady=5)
 
                 # Display the thumbnail within the frame
@@ -330,7 +332,9 @@ class Interface:
                 # Bind a click event to the Label, to toggle selection
                 thumbnail_label.bind(
                     "<Button-1>",
-                    lambda e, lbl=thumbnail_label: self.toggle_thumbnail_selection(lbl),
+                    lambda e, fp=filepath, t_f=thumbnail_frame: (
+                        self.toggle_filepath_selection(fp, t_f)
+                    ),
                 )
 
                 # Add a tooltip to the thumbnail
@@ -354,24 +358,17 @@ class Interface:
         # Return the thumbnail objects to prevent garbage collection
         return thumbnails
 
-    def toggle_thumbnail_selection(self, label):
-        """Toggle the selection state of a thumbnail.
-
-        Args:
-            label: The ttk.Label widget representing the thumbnail.
-        """
-        if label in self.selected_thumbnails:
-            # Deselect the thumbnail and remove the visual indicator
-            self.selected_thumbnails.remove(label)
-            label.thumbnail_frame.configure(relief="flat")
+    def toggle_filepath_selection(self, filepath, thumbnail_frame):
+        if filepath in self.selected_filepaths:
+            self.selected_filepaths.remove(filepath)
+            thumbnail_frame.configure(relief="flat")
         else:
-            # Select the thumbnail and add a visual indicator
-            self.selected_thumbnails.append(label)
-            label.thumbnail_frame.configure(relief="solid")
+            self.selected_filepaths.add(filepath)
+            thumbnail_frame.configure(relief="solid")
 
         # Enable or disable the Delete button
         self.delete_button.state(
-            ["disabled" if len(self.selected_thumbnails) == 0 else "!disabled"]
+            ["!disabled" if self.selected_filepaths else "disabled"]
         )
 
     def display_thumbnails(self):
@@ -382,6 +379,7 @@ class Interface:
         in separate frames. Maintains references to thumbnail objects to
         prevent garbage collection.
         """
+
         # Grab the duplicate photos, grouped by hash
         db_rows = self.database.query_database()
 
