@@ -4,7 +4,6 @@ This module provides the Interface class which creates and manages a Tkinter-bas
 GUI for displaying duplicate photos, scanning directories, and managing photo deletion.
 """
 
-import pprint
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from datetime import datetime
 from os import cpu_count
@@ -54,7 +53,7 @@ class Interface:
         self.display_thumbnails()
 
         # Set the scanning text
-        self.scanning_text.set("Click to scan")
+        self.update_scanning_text("Click to scan")
 
         # Spin up the GUI
         self.tk_root.mainloop()
@@ -287,11 +286,11 @@ class Interface:
         self.delete_button.state(["disabled"])
 
         # Update the thumbnails
-        self.scanning_text.set("Updating thumbnails...")
+        self.update_scanning_text("Updating thumbnails...")
         self.display_thumbnails()
 
         # Reset the scanning text
-        self.scanning_text.set("Scan complete!")
+        self.update_scanning_text("Scan complete!")
 
         # Let the user know that the files have been deleted
         num_photos = len(self.selected_filepaths)
@@ -315,27 +314,19 @@ class Interface:
         throughout the scanning process.
         """
         # Update the scanning text
-        self.scanning_text.set("Scanning for photo files...")
-        self.tk_root.update()  # Force GUI update
+        self.update_scanning_text("Scanning for photo files...")
 
         # Get the filepaths of all photos on the hard drive
         filepaths = self.finder.find_photo_filepaths()
-        print("Filepaths:")
-        pprint.pp(filepaths, indent=2)
         if not filepaths:
             return
 
         # Check which filepaths already exist in the database
-        self.scanning_text.set("Checking existing files...")
-        self.tk_root.update()
+        self.update_scanning_text("Checking existing files...")
         filepaths_in_database = self.database.get_existing_filepaths(filepaths)
-        print("Filepaths in database:")
-        pprint.pp(filepaths_in_database, indent=2)
 
         # Separate files into existing and new
         new_filepaths = [fp for fp in filepaths if fp not in filepaths_in_database]
-        print("New filepaths:")
-        pprint.pp(new_filepaths, indent=2)
 
         # Batch update all existing database rows with the current timestamp
         now = datetime.now()
@@ -368,8 +359,7 @@ class Interface:
         self.database.update_num_pages(self.finder.directory_to_scan)
 
         # Update the thumbnails
-        self.scanning_text.set("Updating thumbnails...")
-        self.tk_root.update()  # Force GUI update before long operation
+        self.update_scanning_text("Updating thumbnails...")
         self.display_thumbnails()
 
         # Update the pagination UI
@@ -377,7 +367,10 @@ class Interface:
         self.update_num_pages_label()
 
         # Reset the scanning text
-        self.scanning_text.set("Scan complete!")
+        self.update_scanning_text("Scan complete!")
+
+    def update_scanning_text(self, text):
+        self.scanning_text.set(text)
         self.tk_root.update()  # Final GUI update
 
     def compute_file_hashes(self, new_filepaths, now):
@@ -386,10 +379,9 @@ class Interface:
         for i, filepath in enumerate(new_filepaths, 1):
             # Update GUI every 50 files to reduce overhead
             if i % 50 == 0 or i == len(new_filepaths):
-                self.scanning_text.set(
+                self.update_scanning_text(
                     f"Analyzing new photos {i}/{len(new_filepaths)}..."
                 )
-                self.tk_root.update()
 
             filepath, file_hash = self.finder.dhash_file(filepath)
             if file_hash:
@@ -422,11 +414,10 @@ class Interface:
                     new_filepaths
                 )
                 if should_update:
-                    self.scanning_text.set(
+                    self.update_scanning_text(
                         f"Analyzing new photos "
                         f"{completed_count}/{len(new_filepaths)}..."
                     )
-                    self.tk_root.update()
 
                 try:
                     filepath, file_hash = future.result()
@@ -571,8 +562,7 @@ class Interface:
         num_rows = len(db_rows)
         for i, (hash, concat_filepaths) in enumerate(db_rows, 1):
             # Update the scanning text at the top
-            self.scanning_text.set(f"Displaying duplicate group {i}/{num_rows}...")
-            self.tk_root.update()  # Final GUI update
+            self.update_scanning_text(f"Displaying duplicate group {i}/{num_rows}...")
 
             # Get the list of filepaths
             filepaths = concat_filepaths.split(",")
