@@ -39,15 +39,19 @@ class Database:
         This method is safe to call multiple times as it uses
         CREATE TABLE IF NOT EXISTS.
         """
-        self.cursor.execute(
-            """
-            CREATE TABLE IF NOT EXISTS photos (
-                filepath TEXT PRIMARY KEY,
-                hash TEXT NOT NULL,
-                lastseen DATETIME
-            );
-            """
-        )
+        try:
+            self.cursor.execute(
+                """
+                CREATE TABLE IF NOT EXISTS photos (
+                    filepath TEXT PRIMARY KEY,
+                    hash TEXT NOT NULL,
+                    lastseen DATETIME
+                );
+                """
+            )
+        except sqlite3.IntegrityError as e:
+            print(f"Error creating database: {e}")
+            raise
 
     def update_num_pages(self, directory_to_scan):
         """Update pagination information based on current duplicate groups.
@@ -57,24 +61,28 @@ class Database:
         hashes_per_page, and updates the page_number to ensure it doesn't exceed
         the total number of pages.
         """
-        # Grab the duplicate photos, grouped by hash
-        self.cursor.execute(
-            """SELECT hash, GROUP_CONCAT(filepath)
-            FROM photos
-            WHERE filepath LIKE ?
-            GROUP BY hash
-            HAVING COUNT(*) > 1
-            ORDER BY hash
-            """,
-            (str(directory_to_scan) + "%",),
-        )
+        try:
+            # Grab the duplicate photos, grouped by hash
+            self.cursor.execute(
+                """SELECT hash, GROUP_CONCAT(filepath)
+                FROM photos
+                WHERE filepath LIKE ?
+                GROUP BY hash
+                HAVING COUNT(*) > 1
+                ORDER BY hash
+                """,
+                (str(directory_to_scan) + "%",),
+            )
 
-        # Get all the rows
-        rows = self.cursor.fetchall()
+            # Get all the rows
+            rows = self.cursor.fetchall()
 
-        # Calculate the number of pages for pagination
-        self.num_pages = math.ceil(len(rows) / self.hashes_per_page)
-        self.page_number = min(1, self.num_pages)
+            # Calculate the number of pages for pagination
+            self.num_pages = math.ceil(len(rows) / self.hashes_per_page)
+            self.page_number = min(1, self.num_pages)
+        except sqlite3.IntegrityError as e:
+            print(f"Error updating number of pages: {e}")
+            raise
 
     def query_database(self, directory_to_scan):
         """Retrieve all duplicate photos grouped by their hash.
@@ -87,26 +95,30 @@ class Database:
         Only returns hashes that appear more than once in the database,
         effectively identifying duplicate photos.
         """
-        # Grab the duplicate photos, grouped by hash
-        self.cursor.execute(
-            """SELECT hash, GROUP_CONCAT(filepath)
-            FROM photos
-            WHERE filepath LIKE ?
-            GROUP BY hash
-            HAVING COUNT(*) > 1
-            ORDER BY hash
-            LIMIT ?
-            OFFSET ?
-            """,
-            (
-                str(directory_to_scan) + "%",
-                self.hashes_per_page,
-                (self.page_number - 1) * self.hashes_per_page,
-            ),
-        )
+        try:
+            # Grab the duplicate photos, grouped by hash
+            self.cursor.execute(
+                """SELECT hash, GROUP_CONCAT(filepath)
+                FROM photos
+                WHERE filepath LIKE ?
+                GROUP BY hash
+                HAVING COUNT(*) > 1
+                ORDER BY hash
+                LIMIT ?
+                OFFSET ?
+                """,
+                (
+                    str(directory_to_scan) + "%",
+                    self.hashes_per_page,
+                    (self.page_number - 1) * self.hashes_per_page,
+                ),
+            )
 
-        # Get all the rows
-        return self.cursor.fetchall()
+            # Get all the rows
+            return self.cursor.fetchall()
+        except sqlite3.IntegrityError as e:
+            print(f"Error querying database: {e}")
+            raise
 
     def delete_photos(self, filepaths):
         """
@@ -165,11 +177,15 @@ class Database:
             return set()
 
         placeholders = ",".join("?" * len(filepaths))
-        self.cursor.execute(
-            f"SELECT filepath FROM photos WHERE filepath IN ({placeholders});",
-            list(filepaths),
-        )
-        return {row[0] for row in self.cursor.fetchall()}
+        try:
+            self.cursor.execute(
+                f"SELECT filepath FROM photos WHERE filepath IN ({placeholders});",
+                list(filepaths),
+            )
+            return {row[0] for row in self.cursor.fetchall()}
+        except sqlite3.IntegrityError as e:
+            print(f"Error getting existing rows from database: {e}")
+            raise
 
     def batch_update_lastseen(self, filepaths, timestamp):
         """
@@ -183,11 +199,15 @@ class Database:
             return
 
         placeholders = ",".join("?" * len(filepaths))
-        self.cursor.execute(
-            f"UPDATE photos SET lastseen = ? WHERE filepath IN ({placeholders});",
-            [timestamp] + list(filepaths),
-        )
-        self.connection.commit()
+        try:
+            self.cursor.execute(
+                f"UPDATE photos SET lastseen = ? WHERE filepath IN ({placeholders});",
+                [timestamp] + list(filepaths),
+            )
+            self.connection.commit()
+        except sqlite3.IntegrityError as e:
+            print(f"Error updating lastseen in database: {e}")
+            raise
 
     def batch_insert_new_photos(self, photo_data):
         """
@@ -199,8 +219,12 @@ class Database:
         if not photo_data:
             return
 
-        self.cursor.executemany(
-            "INSERT INTO photos VALUES (?, ?, ?);",
-            photo_data,
-        )
-        self.connection.commit()
+        try:
+            self.cursor.executemany(
+                "INSERT INTO photos VALUES (?, ?, ?);",
+                photo_data,
+            )
+            self.connection.commit()
+        except sqlite3.IntegrityError as e:
+            print(f"Error inserting new entries into database: {e}")
+            raise

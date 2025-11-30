@@ -16,27 +16,6 @@ from tktooltip import ToolTip
 from widgets import OutlinedFrame, VerticalScrollFrame
 
 
-def _compute_file_hash_worker(filepath):
-    """Worker function for multiprocessing to compute file hash.
-
-    This function must be at module level to be picklable for multiprocessing.
-
-    Args:
-        filepath: Path to the file to hash.
-
-    Returns:
-        tuple: (filepath, hash) if successful, (filepath, None) if failed.
-    """
-    import imagehash
-    from PIL import Image
-
-    try:
-        file_hash = str(imagehash.dhash(Image.open(filepath)))
-        return (filepath, file_hash)
-    except Exception:
-        return (filepath, None)
-
-
 class Interface:
     def __init__(self, database, finder):
         """Initialize the Interface and start the GUI application.
@@ -338,70 +317,30 @@ class Interface:
         self.scanning_text.set("Scanning for photo files...")
         self.tk_root.update()  # Force GUI update
 
-        # Grab the datetime of right now, to stamp all existing files' entries
-        now = datetime.now()
-
-        # Hash the photo files and store in the database
+        # Get the filepaths of all photos on the hard drive
         filepaths = self.finder.find_photo_filepaths()
-
         if not filepaths:
             return
 
-        # Batch check which filepaths already exist in the database
+        # Check which filepaths already exist in the database
         self.scanning_text.set("Checking existing files...")
         self.tk_root.update()
-        existing_filepaths = self.database.get_existing_filepaths(filepaths)
+        filepaths_in_database = self.database.get_existing_filepaths(filepaths)
 
         # Separate files into existing and new
-        new_filepaths = [fp for fp in filepaths if fp not in existing_filepaths]
-        files_to_update = list(existing_filepaths)
+        new_filepaths = [fp for fp in filepaths if fp not in filepaths_in_database]
 
-        # Batch update all existing files
-        if files_to_update:
+        # Batch update all existing database rows with the current timestamp
+        now = datetime.now()
+        if filepaths_in_database:
             try:
-                self.database.batch_update_lastseen(files_to_update, now)
+                self.database.batch_update_lastseen(filepaths_in_database, now)
             except IntegrityError:
                 pass
 
         # Process new files: compute hashes and prepare for batch insert
-        new_photos_data = []
         if new_filepaths:
-            # Use multiprocessing to hash files in parallel
-            # Determine optimal number of workers
-            # (use CPU count, but cap at reasonable limit)
-            max_workers = min(cpu_count() or 4, len(new_filepaths), 8)
-
-            completed_count = 0
-            with ProcessPoolExecutor(max_workers=max_workers) as executor:
-                # Submit all hashing tasks
-                future_to_filepath = {
-                    executor.submit(_compute_file_hash_worker, filepath): filepath
-                    for filepath in new_filepaths
-                }
-
-                # Process results as they complete
-                for future in as_completed(future_to_filepath):
-                    completed_count += 1
-
-                    # Update GUI every 50 files to reduce overhead
-                    should_update = completed_count % 50 == 0 or completed_count == len(
-                        new_filepaths
-                    )
-                    if should_update:
-                        self.scanning_text.set(
-                            f"Analyzing new photos "
-                            f"{completed_count}/{len(new_filepaths)}..."
-                        )
-                        self.tk_root.update()
-
-                    try:
-                        filepath, file_hash = future.result()
-                        if file_hash:
-                            new_photos_data.append((filepath, file_hash, now))
-                    except Exception as e:
-                        # Handle any errors from the worker process
-                        print(f"Error processing {future_to_filepath[future]}: {e}")
-                        continue
+            new_photos_data = self.compute_file_hashes(new_filepaths, now)
 
         # Batch insert all new photos
         if new_photos_data:
@@ -433,6 +372,64 @@ class Interface:
         self.scanning_text.set("Scan complete!")
         self.tk_root.update()  # Final GUI update
 
+    def compute_file_hashes(self, new_filepaths, now):
+        new_photos_data = []
+        for i, filepath in enumerate(new_filepaths, 1):
+            # Update GUI every 50 files to reduce overhead
+            if i % 50 == 0 or i == len(new_filepaths):
+                self.scanning_text.set(
+                    f"Analyzing new photos {i}/{len(new_filepaths)}..."
+                )
+                self.tk_root.update()
+
+            filepath, file_hash = self.finder.dhash_file(filepath)
+            if file_hash:
+                new_photos_data.append((filepath, file_hash, now))
+
+        return new_photos_data
+
+    def compute_file_hashes_multiprocessing(self, new_filepaths, now):
+        new_photos_data = []
+
+        # Use multiprocessing to hash files in parallel
+        # Determine optimal number of workers
+        # (use CPU count, but cap at reasonable limit)
+        max_workers = min(cpu_count() or 4, len(new_filepaths), 8)
+
+        completed_count = 0
+        with ProcessPoolExecutor(max_workers=max_workers) as executor:
+            # Submit all hashing tasks
+            future_to_filepath = {
+                executor.submit(self.finder.dhash_file, filepath): filepath
+                for filepath in new_filepaths
+            }
+
+            # Process results as they complete
+            for future in as_completed(future_to_filepath):
+                completed_count += 1
+
+                # Update GUI every 50 files to reduce overhead
+                should_update = completed_count % 50 == 0 or completed_count == len(
+                    new_filepaths
+                )
+                if should_update:
+                    self.scanning_text.set(
+                        f"Analyzing new photos "
+                        f"{completed_count}/{len(new_filepaths)}..."
+                    )
+                    self.tk_root.update()
+
+                try:
+                    filepath, file_hash = future.result()
+                    if file_hash:
+                        new_photos_data.append((filepath, file_hash, now))
+                except Exception as e:
+                    # Handle any errors from the worker process
+                    print(f"Error processing {future_to_filepath[future]}: {e}")
+                    continue
+
+        return new_photos_data
+
     def display_thumbnails_in_frame(self, hash_frame, filepaths):
         """Display photo thumbnails in a grid layout within the given frame.
 
@@ -459,14 +456,6 @@ class Interface:
 
                 # Convert it into a thumbnail
                 img.thumbnail((200, 200))
-
-                # If image has alpha channel, convert to RGBA and then to RGB with white background
-                if img.mode in ("RGBA", "LA"):
-                    background = Image.new("RGB", img.size, (255, 255, 255))
-                    background.paste(img, mask=img.split()[-1])  # Use alpha channel as mask
-                    img = background
-                elif img.mode != "RGB":
-                    img = img.convert("RGB")
 
                 # Create a Tkinter-compatible photo image object
                 thumbnail = ImageTk.PhotoImage(img)

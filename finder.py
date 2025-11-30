@@ -4,7 +4,6 @@ This module provides the Finder class for locating photo files in a directory,
 computing MD5 hashes to identify duplicates, and managing file deletion operations.
 """
 
-import hashlib
 import os
 from pathlib import Path
 
@@ -78,63 +77,9 @@ class Finder:
             else:
                 print(f"File not found, skipping: {filepath}")
 
-    def hash_file(self, filepath):
-        """Compute the MD5 hash of a file.
-
-        Args:
-            filepath: Path to the file to hash.
-
-        Returns:
-            str: Hexadecimal MD5 hash digest of the file.
-
-        Raises:
-            IOError: If the file cannot be read.
-            OSError: If there is an operating system error accessing the file.
-
-        Reads the file in 8KB chunks to efficiently compute the hash
-        without loading the entire file into memory.
-        """
-        try:
-            # Compute MD5 hash using chunked reading for memory efficiency
-            hash_md5 = hashlib.md5()
-            with open(filepath, "rb") as f:
-                # Read file in chunks to avoid loading large files
-                # entirely into memory
-                for chunk in iter(lambda: f.read(8192), b""):
-                    hash_md5.update(chunk)
-            return hash_md5.hexdigest()
-
-        except (IOError, OSError) as e:
-            print(f"Warning: Could not read file {filepath}: {e}")
-            raise
-
     def dhash_file(self, filepath):
         try:
-            return str(imagehash.dhash(Image.open(filepath)))
-        except Exception as e:
-            print(f"Problem {e} with {filepath}")
-            raise
-
-    def compute_file_hash(self, filepath):
-        """Compute the MD5 hash of a file if not already present in the database.
-
-        Args:
-            filepath: Path to the file whose hash should be computed.
-
-        Returns:
-            str or None: The hexadecimal MD5 hash string if computed, or None if the
-            file is already in the database or if an error occurs during hashing.
-
-        This method first checks if the file path is already present in the database.
-        If it exists, the function returns None and does not recompute the hash.
-        If not, it attempts to read the file and compute its MD5 hash.
-        If any file read errors occur (IOError or OSError), None is returned.
-        """
-        # Hash the photo file
-        try:
-            # file_hash = self.hash_file(filepath)
-            file_hash = self.dhash_file(filepath)
-        except (IOError, OSError):
-            return None
-
-        return file_hash
+            file_hash = str(imagehash.dhash(Image.open(filepath)))
+            return (filepath, file_hash)
+        except Exception:
+            return (filepath, None)
