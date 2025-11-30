@@ -362,17 +362,22 @@ class Interface:
             except IntegrityError:
                 pass
 
-        # Process new files: compute hashes and prepare for batch insert
-        new_photos_data = []
+        # Process new files in batches: compute hashes for chunks and batch insert
+        batch_size = 50
         if new_filepaths:
-            new_photos_data = self.compute_file_hashes(new_filepaths, now)
+            for i in range(0, len(new_filepaths), batch_size):
+                # Update display text
+                self.update_scanning_text(
+                    f"Analyzing new photos {i}/{len(new_filepaths)}..."
+                )
 
-        # Batch insert all new photos
-        if new_photos_data:
-            try:
-                self.database.batch_insert_new_photos(new_photos_data)
-            except IntegrityError:
-                pass
+                batch = new_filepaths[i : i + batch_size]
+                new_photos_data = self.compute_file_hashes(batch, now)
+                if new_photos_data:
+                    try:
+                        self.database.batch_insert_new_photos(new_photos_data)
+                    except IntegrityError:
+                        pass
 
         # Any records in the database that didn't get their lastseen column updated
         # don't exist on the filesystem anymore. They can be purged.
@@ -423,15 +428,8 @@ class Interface:
         This method processes each file serially and updates the GUI after every 50
         files (and at the end) for responsive progress feedback.
         """
-        print("Computing file hashes...")
         new_photos_data = []
         for i, filepath in enumerate(new_filepaths, 1):
-            # Update GUI every 50 files to reduce overhead
-            if i % 50 == 0 or i == len(new_filepaths):
-                self.update_scanning_text(
-                    f"Analyzing new photos {i}/{len(new_filepaths)}..."
-                )
-
             filepath, file_hash = self.finder.dhash_file(filepath)
             if file_hash:
                 new_photos_data.append((filepath, file_hash, now))
