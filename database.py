@@ -146,12 +146,14 @@ class Database:
 
     def delete_stale_photos(self, directory_to_scan, timestamp):
         """
-        Remove photo records from the database where the 'lastseen'
-        timestamp is older than the provided value.
+        Delete photo records from the database for the given directory whose
+        'lastseen' timestamp is older than the provided value.
 
         Args:
-            timestamp (datetime): Reference datetime. Any records with a 'lastseen'
-                value less than this timestamp will be deleted.
+            directory_to_scan: The root directory as a string or Path. Only photos
+                whose filepaths start with this directory will be considered.
+            timestamp (datetime): Any records with a 'lastseen' earlier than this
+                datetime will be deleted from the database.
 
         Raises:
             sqlite3.IntegrityError: If the deletion operation fails.

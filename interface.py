@@ -160,6 +160,12 @@ class Interface:
         main_frame.rowconfigure(1, weight=1)
 
     def open_select_directory_dialog(self):
+        """
+        Open a dialog for the user to select a new directory.
+
+        If the user selects a directory, update both the Finder's directory_to_scan
+        and the displayed directory label. Also trigger a GUI update.
+        """
         new_dir = filedialog.askdirectory(initialdir=self.finder.directory_to_scan)
         if new_dir:
             self.finder.directory_to_scan = new_dir
@@ -170,7 +176,18 @@ class Interface:
             self.tk_root.update()
 
     def _debounce(self, delay, fn, args=None, kwargs=None):
+        """
+        Debounce the execution of a function by delaying it for a given time.
 
+        If another call to _debounce occurs before the delay has finished,
+        the previous scheduled call is cancelled and replaced by the new one.
+
+        Args:
+            delay (int): Delay in milliseconds before fn is called.
+            fn (callable): The function to execute.
+            args (list or None): Positional arguments to pass to fn.
+            kwargs (dict or None): Keyword arguments to pass to fn.
+        """
         if self._debounce_running is not None:
             self.tk_root.after_cancel(self._debounce_running)
 
@@ -182,6 +199,15 @@ class Interface:
         )
 
     def _call_debounce_fn(self, fn, args=None, kwargs=None):
+        """
+        Helper for the debounce mechanism: call the target function with arguments,
+        then reset the debounce tracking variable.
+
+        Args:
+            fn (callable): The function to call.
+            args (list or None): Positional args to pass to fn (default empty list).
+            kwargs (dict or None): Keyword args to pass to fn (default empty dict).
+        """
         if args is None:
             args = []
         if kwargs is None:
@@ -370,10 +396,33 @@ class Interface:
         self.update_scanning_text("Scan complete!")
 
     def update_scanning_text(self, text):
+        """
+        Update the scanning status text in the GUI.
+
+        Args:
+            text (str): The text to display in the scanning status label.
+
+        Updates the StringVar associated with the scanning label and
+        forces a GUI update so the user sees immediate feedback.
+        """
         self.scanning_text.set(text)
         self.tk_root.update()  # Final GUI update
 
     def compute_file_hashes(self, new_filepaths, now):
+        """
+        Compute image hashes for a list of new photo file paths.
+
+        Args:
+            new_filepaths (list of str): File paths to new photos that need hashing.
+            now (datetime): The datetime to associate as the 'last seen' timestamp.
+
+        Returns:
+            list of tuples: Each tuple contains (filepath, file_hash, now)
+                for each successfully hashed photo.
+
+        This method processes each file serially and updates the GUI after every 50
+        files (and at the end) for responsive progress feedback.
+        """
         print("Computing file hashes...")
         new_photos_data = []
         for i, filepath in enumerate(new_filepaths, 1):
@@ -390,11 +439,25 @@ class Interface:
         return new_photos_data
 
     def compute_file_hashes_multiprocessing(self, new_filepaths, now):
+        """
+        Compute image hashes for a list of new photos using multiprocessing.
+
+        Args:
+            new_filepaths (list of str): File paths to new photos that need hashing.
+            now (datetime): The datetime to associate as the 'last seen' timestamp.
+
+        Returns:
+            list of tuples: Each tuple contains (filepath, file_hash, now) for each
+                successfully hashed photo.
+
+        Uses a ProcessPoolExecutor to parallelize hashing across multiple CPU cores.
+        Updates the GUI with progress roughly every 50 files and at the end.
+        Handles exceptions gracefully and prints errors encountered during hashing.
+        """
         new_photos_data = []
 
-        # Use multiprocessing to hash files in parallel
-        # Determine optimal number of workers
-        # (use CPU count, but cap at reasonable limit)
+        # Determine optimal number of worker processes
+        # # (capped by total files and at most 8)
         max_workers = min(cpu_count() or 4, len(new_filepaths), 8)
 
         completed_count = 0

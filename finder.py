@@ -78,6 +78,16 @@ class Finder:
                 print(f"File not found, skipping: {filepath}")
 
     def dhash_file(self, filepath):
+        """
+        Compute the difference hash (dHash) for the image at the given file path.
+
+        Args:
+            filepath: Path to the image file to hash.
+
+        Returns:
+            Tuple of (filepath, file_hash) where file_hash is the string representation
+            of the dHash, or None if hashing fails or an error occurs.
+        """
         try:
             file_hash = str(imagehash.dhash(Image.open(filepath)))
             return (filepath, file_hash)
