@@ -39,8 +39,11 @@ class Interface:
         # Reference to each hash's thumbnail objects, to prevent garbage collection
         self.hash_and_thumbnails = {}
 
-        # List of selected thumbnails
+        # Set of selected thumbnails
         self.selected_filepaths = set()
+
+        # List of Tooltip objects
+        self.tooltips = []
 
         # Instantiate the Tk root window
         self.tk_root = Tk()
@@ -53,9 +56,6 @@ class Interface:
 
         # Fill the thumbnails frame with duplicate thumbnails
         self.display_thumbnails()
-
-        # Set the scanning text
-        self.update_scanning_text("Click to scan")
 
         # Spin up the GUI
         self.tk_root.mainloop()
@@ -218,6 +218,11 @@ class Interface:
         fn(*args, **kwargs)
         self._debounce_running = None
 
+    def destroy_tooltips(self):
+        for tooltip in self.tooltips:
+            tooltip.destroy()
+        self.tooltips = []
+
     def go_to_prev_page(self):
         """Navigate to the previous page of duplicate photo groups.
 
@@ -301,6 +306,9 @@ class Interface:
         database entries, updates the thumbnail display, and shows a success
         message. Clears the selection after deletion is complete.
         """
+        # Grab the number of selected thumbnails
+        num_photos = len(self.selected_filepaths)
+
         # Delete the photos from the hard drive
         self.finder.delete_selected_photos(self.selected_filepaths)
 
@@ -313,15 +321,14 @@ class Interface:
         # Visually disable the delete button
         self.delete_button.state(["disabled"])
 
+        # Clear out the selected photos set
+        self.selected_filepaths.clear()
+
         # Update the thumbnails
         self.update_scanning_text("Updating thumbnails...")
         self.display_thumbnails()
 
-        # Reset the scanning text
-        self.update_scanning_text("Scan complete!")
-
         # Let the user know that the files have been deleted
-        num_photos = len(self.selected_filepaths)
         messagebox.showinfo(
             title="Photos Deleted!",
             message=(
@@ -329,9 +336,6 @@ class Interface:
                 f"photo{'' if num_photos == 1 else 's'}"
             ),
         )
-
-        # Clear out the selected photos list
-        self.selected_filepaths.clear()
 
     def scan_for_duplicates(self):
         """Scan for duplicate photos and update the display.
@@ -432,7 +436,7 @@ class Interface:
         """
         new_photos_data = []
         for i, filepath in enumerate(new_filepaths, 1):
-            filepath, file_hash = self.finder.dhash_file(filepath)
+            filepath, file_hash = self.hasher.dhash_file(filepath)
             if file_hash:
                 new_photos_data.append((filepath, file_hash, now))
 
@@ -556,7 +560,7 @@ class Interface:
                 )
 
                 # Add a tooltip to the thumbnail
-                ToolTip(thumbnail_label, msg=filepath)
+                self.tooltips.append(ToolTip(thumbnail_label, msg=filepath))
 
                 # Add the filepath underneath the thumbnail
                 filename = filepath.split("/")[-1]
@@ -602,6 +606,12 @@ class Interface:
             ["!disabled" if self.selected_filepaths else "disabled"]
         )
 
+        # Update the text to show the number of selected photos
+        self.update_scanning_text(
+            f"{len(self.selected_filepaths)} "
+            f"photo{'' if len(self.selected_filepaths) == 1 else 's'} selected"
+        )
+
     def display_thumbnails(self):
         """Populate the thumbnails container with duplicate photos from the database.
 
@@ -610,6 +620,9 @@ class Interface:
         in separate frames. Maintains references to thumbnail objects to
         prevent garbage collection.
         """
+        # Destroy any lingering Tooltip object
+        self.destroy_tooltips()
+
         # Scroll to the top of the thumbnails frame
         self.thumbnails_container.canvas.yview_moveto(0.0)
 
@@ -627,7 +640,7 @@ class Interface:
         num_rows = len(db_rows)
         for i, (hash, concat_filepaths) in enumerate(db_rows, 1):
             # Update the scanning text at the top
-            self.update_scanning_text(f"Displaying duplicate group {i}/{num_rows}...")
+            self.update_scanning_text(f"Displaying group {i}/{num_rows}...")
 
             # Get the list of filepaths
             filepaths = concat_filepaths.split(",")
@@ -649,3 +662,9 @@ class Interface:
 
             # Save the thumbnail objects, to avoid garbage collection
             self.hash_and_thumbnails[hash] = thumbnails
+
+        # Update the number of selected photos
+        self.update_scanning_text(
+            f"{len(self.selected_filepaths)} "
+            f"photo{'' if len(self.selected_filepaths) == 1 else 's'} selected"
+        )
