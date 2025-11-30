@@ -144,7 +144,7 @@ class Database:
             print(f"Error deleting entries from database: {e}")
             raise
 
-    def delete_stale_photos(self, timestamp):
+    def delete_stale_photos(self, directory_to_scan, timestamp):
         """
         Remove photo records from the database where the 'lastseen'
         timestamp is older than the provided value.
@@ -157,7 +157,13 @@ class Database:
             sqlite3.IntegrityError: If the deletion operation fails.
         """
         try:
-            self.cursor.execute("DELETE FROM photos WHERE lastseen < ?;", (timestamp,))
+            self.cursor.execute(
+                "DELETE FROM photos WHERE filepath LIKE ? AND lastseen < ?;",
+                (
+                    str(directory_to_scan) + "%",
+                    timestamp,
+                ),
+            )
             self.connection.commit()
         except sqlite3.IntegrityError as e:
             print(f"Error deleting stale entries from database: {e}")

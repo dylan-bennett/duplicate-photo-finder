@@ -4,6 +4,7 @@ This module provides the Interface class which creates and manages a Tkinter-bas
 GUI for displaying duplicate photos, scanning directories, and managing photo deletion.
 """
 
+import pprint
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from datetime import datetime
 from os import cpu_count
@@ -319,6 +320,8 @@ class Interface:
 
         # Get the filepaths of all photos on the hard drive
         filepaths = self.finder.find_photo_filepaths()
+        print("Filepaths:")
+        pprint.pp(filepaths, indent=2)
         if not filepaths:
             return
 
@@ -326,9 +329,13 @@ class Interface:
         self.scanning_text.set("Checking existing files...")
         self.tk_root.update()
         filepaths_in_database = self.database.get_existing_filepaths(filepaths)
+        print("Filepaths in database:")
+        pprint.pp(filepaths_in_database, indent=2)
 
         # Separate files into existing and new
         new_filepaths = [fp for fp in filepaths if fp not in filepaths_in_database]
+        print("New filepaths:")
+        pprint.pp(new_filepaths, indent=2)
 
         # Batch update all existing database rows with the current timestamp
         now = datetime.now()
@@ -339,6 +346,7 @@ class Interface:
                 pass
 
         # Process new files: compute hashes and prepare for batch insert
+        new_photos_data = []
         if new_filepaths:
             new_photos_data = self.compute_file_hashes(new_filepaths, now)
 
@@ -352,7 +360,7 @@ class Interface:
         # Any records in the database that didn't get their lastseen column updated
         # don't exist on the filesystem anymore. They can be purged.
         try:
-            self.database.delete_stale_photos(now)
+            self.database.delete_stale_photos(self.finder.directory_to_scan, now)
         except IntegrityError:
             pass
 
@@ -373,6 +381,7 @@ class Interface:
         self.tk_root.update()  # Final GUI update
 
     def compute_file_hashes(self, new_filepaths, now):
+        print("Computing file hashes...")
         new_photos_data = []
         for i, filepath in enumerate(new_filepaths, 1):
             # Update GUI every 50 files to reduce overhead
