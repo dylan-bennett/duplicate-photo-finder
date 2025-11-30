@@ -608,6 +608,8 @@ class Interface:
         in separate frames. Maintains references to thumbnail objects to
         prevent garbage collection.
         """
+        # Scroll to the top of the thumbnails frame
+        self.thumbnails_container.canvas.yview_moveto(0.0)
 
         # Grab the duplicate photos, grouped by hash
         db_rows = self.database.query_database(self.finder.directory_to_scan)
