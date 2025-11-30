@@ -8,6 +8,7 @@ from pathlib import Path
 
 from database import Database
 from finder import Finder
+from hasher import Hasher
 from interface import Interface
 
 
@@ -34,6 +35,7 @@ class DuplicatePhotoFinder:
         self.database = None
         self.finder = None
         self.interface = None
+        self.hasher = None
 
     def init_database(self):
         """Initialize and create the database connection.
@@ -55,6 +57,14 @@ class DuplicatePhotoFinder:
         # Instantiate the Finder
         self.finder = Finder(database=self.database)
 
+    def init_hasher(self):
+        """Initialize the Hasher component.
+
+        Creates a Hasher instance used to compute hashes for photo files,
+        enabling the identification of duplicate images in the application.
+        """
+        self.hasher = Hasher()
+
     def init_interface(self):
         """Initialize the graphical user interface.
 
@@ -63,7 +73,7 @@ class DuplicatePhotoFinder:
         managing the scanning process.
         """
         # Instantiate the GUI
-        self.interface = Interface(self.database, self.finder)
+        self.interface = Interface(self.database, self.finder, self.hasher)
 
     def run(self):
         """Run the duplicate photo finder application.
@@ -73,6 +83,7 @@ class DuplicatePhotoFinder:
         """
         self.init_database()
         self.init_finder()
+        self.init_hasher()
         self.init_interface()
 
 

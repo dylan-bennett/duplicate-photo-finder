@@ -17,18 +17,20 @@ from widgets import OutlinedFrame, VerticalScrollFrame
 
 
 class Interface:
-    def __init__(self, database, finder):
+    def __init__(self, database, finder, hasher):
         """Initialize the Interface and start the GUI application.
 
         Args:
             database: Database instance for accessing photo data.
-            finder: Finder instance for scanning and hashing photos.
+            finder: Finder instance for scanning photos.
+            hasher: Hasher instance for hashing photos.
 
         Creates the Tkinter root window, builds the GUI layout, populates
         initial thumbnails, and starts the main event loop.
         """
         self.finder = finder
         self.database = database
+        self.hasher = hasher
         self._debounce_running = None
 
         # Number of columns the thumbnails should take up at max
@@ -368,11 +370,11 @@ class Interface:
             for i in range(0, len(new_filepaths), batch_size):
                 # Update display text
                 self.update_scanning_text(
-                    f"Analyzing new photos {i}/{len(new_filepaths)}..."
+                    f"Processing new photos {i}/{len(new_filepaths)}..."
                 )
 
                 batch = new_filepaths[i : i + batch_size]
-                new_photos_data = self.compute_file_hashes(batch, now)
+                new_photos_data = self.compute_file_hashes_multiprocessing(batch, now)
                 if new_photos_data:
                     try:
                         self.database.batch_insert_new_photos(new_photos_data)
@@ -455,14 +457,14 @@ class Interface:
         new_photos_data = []
 
         # Determine optimal number of worker processes
-        # # (capped by total files and at most 8)
+        # (capped by total files and at most 8)
         max_workers = min(cpu_count() or 4, len(new_filepaths), 8)
 
         completed_count = 0
         with ProcessPoolExecutor(max_workers=max_workers) as executor:
             # Submit all hashing tasks
             future_to_filepath = {
-                executor.submit(self.finder.dhash_file, filepath): filepath
+                executor.submit(self.hasher.dhash_file, filepath): filepath
                 for filepath in new_filepaths
             }
 
