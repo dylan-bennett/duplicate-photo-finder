@@ -141,21 +141,21 @@ class Interface:
         # Label with the directory we're scanning
         # TODO: "{num} folder(s) selected (hover for more)",
         # plus a ToolTip with a pretty-printed list of dirs
+        num_dirs = len(self.finder.directories_to_scan)
         self.directory_to_scan_text = StringVar(
-            value=f"Selected folders: {self.finder.directories_to_scan}"
+            value=(
+                f"{num_dirs} folder{'' if num_dirs == 1 else 's'} selected "
+                "(hover for more)"
+            )
         )
-        directory_to_scan_label = ttk.Label(
+        self.directory_to_scan_label = ttk.Label(
             navigation_frame, textvariable=self.directory_to_scan_text
         )
-        directory_to_scan_label.grid(column=3, row=0, sticky=W)
+        self.directory_to_scan_label.grid(column=3, row=0, sticky=W)
 
-        # # Select directory button
-        # self.select_directory_button = ttk.Button(
-        #     navigation_frame,
-        #     text="Select Folder",
-        #     command=self.open_select_directory_dialog,
-        # )
-        # self.select_directory_button.grid(column=4, row=0, sticky=W, padx=5)
+        # Add a ToolTip to display the list of selected folders
+        msg = "\n".join(str(directory) for directory in self.finder.directories_to_scan)
+        self.directory_to_scan_tooltip = ToolTip(self.directory_to_scan_label, msg=msg)
 
         # Select directories button
         self.select_directories_button = ttk.Button(
@@ -180,8 +180,19 @@ class Interface:
             self.finder.directories_to_scan = new_dirs
 
             # TODO: update text, a la other TODO
+            num_dirs = len(self.finder.directories_to_scan)
             self.directory_to_scan_text.set(
-                f"Selected folder: {self.finder.directories_to_scan}"
+                value=(
+                    f"{num_dirs} folder{'' if num_dirs == 1 else 's'} selected "
+                    "(hover for more)"
+                )
+            )
+            msg = "\n".join(
+                str(directory) for directory in self.finder.directories_to_scan
+            )
+            self.directory_to_scan_tooltip.destroy()
+            self.directory_to_scan_tooltip = ToolTip(
+                self.directory_to_scan_label, msg=msg
             )
             self.tk_root.update()
 
@@ -364,8 +375,6 @@ class Interface:
         # Check which filepaths already exist in the database
         self.update_scanning_text("Checking existing files...")
         filepaths_in_database = self.database.get_existing_filepaths(filepaths)
-
-        print(filepaths_in_database)
 
         # Separate files into existing and new
         new_filepaths = [fp for fp in filepaths if fp not in filepaths_in_database]

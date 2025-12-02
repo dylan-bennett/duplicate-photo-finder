@@ -215,9 +215,6 @@ class Database:
         if not filepaths:
             return
 
-        print("IN batch_update_lastseen")
-        print(filepaths)
-
         placeholders = ",".join("?" * len(filepaths))
         try:
             self.cursor.execute(

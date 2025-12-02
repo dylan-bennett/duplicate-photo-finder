@@ -30,8 +30,6 @@ class DuplicatePhotoFinder:
         db_name = "photos.db"
         self.db_path = f"{full_path}/{db_name}"
 
-        # self.directory_to_scan = "/home/dylan/Pictures"
-
         self.database = None
         self.finder = None
         self.interface = None
