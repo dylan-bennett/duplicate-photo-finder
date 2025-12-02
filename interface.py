@@ -7,10 +7,12 @@ GUI for displaying duplicate photos, scanning directories, and managing photo de
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from datetime import datetime
 from os import cpu_count
+from pathlib import Path
 from sqlite3 import IntegrityError
-from tkinter import E, N, S, StringVar, TclError, Tk, W, filedialog, messagebox, ttk
+from tkinter import E, N, S, StringVar, TclError, Tk, W, messagebox, ttk
 
 from PIL import Image, ImageTk
+from tkfilebrowser import askopendirnames
 from tktooltip import ToolTip
 
 from widgets import OutlinedFrame, VerticalScrollFrame
@@ -49,7 +51,7 @@ class Interface:
         self.tk_root = Tk()
 
         # Update the database pagination info
-        self.database.update_num_pages(self.finder.directory_to_scan)
+        self.database.update_num_pages(self.finder.directories_to_scan)
 
         # Create the GUI
         self.create_gui()
@@ -137,21 +139,31 @@ class Interface:
         self.next_page_button.grid(column=2, row=0, sticky=E)
 
         # Label with the directory we're scanning
+        # TODO: "{num} folder(s) selected (hover for more)",
+        # plus a ToolTip with a pretty-printed list of dirs
         self.directory_to_scan_text = StringVar(
-            value=f"Selected folder: {self.finder.directory_to_scan}"
+            value=f"Selected folders: {self.finder.directories_to_scan}"
         )
         directory_to_scan_label = ttk.Label(
             navigation_frame, textvariable=self.directory_to_scan_text
         )
         directory_to_scan_label.grid(column=3, row=0, sticky=W)
 
-        # Select directory button
-        self.select_directory_button = ttk.Button(
+        # # Select directory button
+        # self.select_directory_button = ttk.Button(
+        #     navigation_frame,
+        #     text="Select Folder",
+        #     command=self.open_select_directory_dialog,
+        # )
+        # self.select_directory_button.grid(column=4, row=0, sticky=W, padx=5)
+
+        # Select directories button
+        self.select_directories_button = ttk.Button(
             navigation_frame,
-            text="Select Folder",
-            command=self.open_select_directory_dialog,
+            text="Select Folders",
+            command=self.open_select_directories_dialog,
         )
-        self.select_directory_button.grid(column=4, row=0, sticky=W, padx=5)
+        self.select_directories_button.grid(column=4, row=0, sticky=W, padx=5)
 
         # Fill the Tk root window with the main frame
         self.tk_root.columnconfigure(0, weight=1)
@@ -161,19 +173,15 @@ class Interface:
         main_frame.columnconfigure(0, weight=1)
         main_frame.rowconfigure(1, weight=1)
 
-    def open_select_directory_dialog(self):
-        """
-        Open a dialog for the user to select a new directory.
+    def open_select_directories_dialog(self):
+        # TODO: can we find the common root folder of all of the selected folders?
+        new_dirs = askopendirnames(parent=self.tk_root, initialdir=Path.home())
+        if new_dirs:
+            self.finder.directories_to_scan = new_dirs
 
-        If the user selects a directory, update both the Finder's directory_to_scan
-        and the displayed directory label. Also trigger a GUI update.
-        """
-        new_dir = filedialog.askdirectory(initialdir=self.finder.directory_to_scan)
-        if new_dir:
-            self.finder.directory_to_scan = new_dir
-
+            # TODO: update text, a la other TODO
             self.directory_to_scan_text.set(
-                f"Selected folder: {self.finder.directory_to_scan}"
+                f"Selected folder: {self.finder.directories_to_scan}"
             )
             self.tk_root.update()
 
@@ -357,6 +365,8 @@ class Interface:
         self.update_scanning_text("Checking existing files...")
         filepaths_in_database = self.database.get_existing_filepaths(filepaths)
 
+        print(filepaths_in_database)
+
         # Separate files into existing and new
         new_filepaths = [fp for fp in filepaths if fp not in filepaths_in_database]
 
@@ -388,12 +398,12 @@ class Interface:
         # Any records in the database that didn't get their lastseen column updated
         # don't exist on the filesystem anymore. They can be purged.
         try:
-            self.database.delete_stale_photos(self.finder.directory_to_scan, now)
+            self.database.delete_stale_photos(self.finder.directories_to_scan, now)
         except IntegrityError:
             pass
 
         # Update the database pagination info
-        self.database.update_num_pages(self.finder.directory_to_scan)
+        self.database.update_num_pages(self.finder.directories_to_scan)
 
         # Update the thumbnails
         self.update_scanning_text("Updating thumbnails...")
@@ -627,7 +637,7 @@ class Interface:
         self.thumbnails_container.canvas.yview_moveto(0.0)
 
         # Grab the duplicate photos, grouped by hash
-        db_rows = self.database.query_database(self.finder.directory_to_scan)
+        db_rows = self.database.query_database(self.finder.directories_to_scan)
 
         # Remove any previous thumbnail groups
         for child in self.thumbnails_container.frame.winfo_children():

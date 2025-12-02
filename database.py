@@ -53,7 +53,7 @@ class Database:
             print(f"Error creating database: {e}")
             raise
 
-    def update_num_pages(self, directory_to_scan):
+    def update_num_pages(self, directories_to_scan):
         """Update pagination information based on current duplicate groups.
 
         Queries the database for all duplicate photo groups (hashes that appear
@@ -66,12 +66,14 @@ class Database:
             self.cursor.execute(
                 """SELECT hash, GROUP_CONCAT(filepath)
                 FROM photos
-                WHERE filepath LIKE ?
+                WHERE """
+                + " OR ".join(["filepath LIKE ?"] * len(directories_to_scan))
+                + """
                 GROUP BY hash
                 HAVING COUNT(*) > 1
                 ORDER BY hash
                 """,
-                (str(directory_to_scan) + "%",),
+                tuple(str(directory) + "%" for directory in directories_to_scan),
             )
 
             # Get all the rows
@@ -84,7 +86,7 @@ class Database:
             print(f"Error updating number of pages: {e}")
             raise
 
-    def query_database(self, directory_to_scan):
+    def query_database(self, directories_to_scan):
         """Retrieve all duplicate photos grouped by their hash.
 
         Returns:
@@ -100,7 +102,9 @@ class Database:
             self.cursor.execute(
                 """SELECT hash, GROUP_CONCAT(filepath)
                 FROM photos
-                WHERE filepath LIKE ?
+                WHERE """
+                + " OR ".join(["filepath LIKE ?"] * len(directories_to_scan))
+                + """
                 GROUP BY hash
                 HAVING COUNT(*) > 1
                 ORDER BY hash
@@ -108,7 +112,7 @@ class Database:
                 OFFSET ?
                 """,
                 (
-                    str(directory_to_scan) + "%",
+                    *(str(directory) + "%" for directory in directories_to_scan),
                     self.hashes_per_page,
                     (self.page_number - 1) * self.hashes_per_page,
                 ),
@@ -144,7 +148,7 @@ class Database:
             print(f"Error deleting entries from database: {e}")
             raise
 
-    def delete_stale_photos(self, directory_to_scan, timestamp):
+    def delete_stale_photos(self, directories_to_scan, timestamp):
         """
         Delete photo records from the database for the given directory whose
         'lastseen' timestamp is older than the provided value.
@@ -158,13 +162,18 @@ class Database:
         Raises:
             sqlite3.IntegrityError: If the deletion operation fails.
         """
+        placeholders = tuple(
+            item
+            for directory in directories_to_scan
+            for item in (str(directory) + "%", timestamp)
+        )
+        filepaths_lastseen_condition = " OR ".join(
+            ["(filepath LIKE ? AND lastseen < ?)"] * len(directories_to_scan)
+        )
         try:
             self.cursor.execute(
-                "DELETE FROM photos WHERE filepath LIKE ? AND lastseen < ?;",
-                (
-                    str(directory_to_scan) + "%",
-                    timestamp,
-                ),
+                "DELETE FROM photos WHERE " + filepaths_lastseen_condition + ";",
+                placeholders,
             )
             self.connection.commit()
         except sqlite3.IntegrityError as e:
@@ -205,6 +214,9 @@ class Database:
         """
         if not filepaths:
             return
+
+        print("IN batch_update_lastseen")
+        print(filepaths)
 
         placeholders = ",".join("?" * len(filepaths))
         try:

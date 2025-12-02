@@ -6,3 +6,6 @@ tkinter-tooltip==3.1.2
 
 # Image hashing
 ImageHash==4.3.2
+
+# File browser
+tkfilebrowser==2.3.2
