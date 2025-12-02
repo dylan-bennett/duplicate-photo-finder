@@ -355,6 +355,14 @@ class Interface:
         # Clear out the selected photos set
         self.selected_filepaths.clear()
 
+        # Update the database pagination info
+        self.database.update_num_pages(self.finder.directories_to_scan)
+
+        # Reset the navigation
+        self.database.page_number = 1
+        self.update_prev_next_button_states()
+        self.update_num_pages_label()
+
         # Update the thumbnails
         self.update_scanning_text("Updating thumbnails...")
         self.display_thumbnails()
@@ -546,8 +554,8 @@ class Interface:
         thumbnails = []
         row, col = 0, 0
 
-        # Run through all of the photograph files
-        for filepath in filepaths:
+        # Run through all of the photograph files in alphabetical order
+        for filepath in sorted(filepaths, key=lambda n: n.lower()):
             try:
                 # Create the Image object
                 img = Image.open(filepath)
