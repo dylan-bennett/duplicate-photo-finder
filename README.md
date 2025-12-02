@@ -33,7 +33,7 @@ A Python desktop application for finding and managing duplicate photos using per
 
 1. Clone the repository:
 ```bash
-git clone https://github.com/yourusername/duplicate-photo-finder.git
+git clone https://github.com/dylan-bennett/duplicate-photo-finder.git
 cd duplicate-photo-finder
 ```
 
