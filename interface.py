@@ -174,6 +174,12 @@ class Interface:
         main_frame.rowconfigure(1, weight=1)
 
     def open_select_directories_dialog(self):
+        """Open a file browser dialog to select directories to scan.
+
+        Allows the user to select one or more directories to scan for duplicate
+        photos. Updates the finder's directories_to_scan list and refreshes the
+        directory display text and tooltip with the new selection.
+        """
         # TODO: can we find the common root folder of all of the selected folders?
         new_dirs = askopendirnames(parent=self.tk_root, initialdir=Path.home())
         if new_dirs:
@@ -238,6 +244,12 @@ class Interface:
         self._debounce_running = None
 
     def destroy_tooltips(self):
+        """Destroy all existing tooltip objects and clear the tooltips list.
+
+        Removes all tooltip widgets that were created for thumbnail labels,
+        preventing memory leaks and ensuring clean state when refreshing
+        the thumbnail display.
+        """
         for tooltip in self.tooltips:
             tooltip.destroy()
         self.tooltips = []

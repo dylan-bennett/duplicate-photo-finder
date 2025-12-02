@@ -56,6 +56,11 @@ class Database:
     def update_num_pages(self, directories_to_scan):
         """Update pagination information based on current duplicate groups.
 
+        Args:
+            directories_to_scan: List of directory paths to filter duplicates by.
+                Only photos whose filepaths start with one of these directories
+                will be considered.
+
         Queries the database for all duplicate photo groups (hashes that appear
         more than once), calculates the total number of pages based on
         hashes_per_page, and updates the page_number to ensure it doesn't exceed
@@ -89,13 +94,19 @@ class Database:
     def query_database(self, directories_to_scan):
         """Retrieve all duplicate photos grouped by their hash.
 
+        Args:
+            directories_to_scan: List of directory paths to filter duplicates by.
+                Only photos whose filepaths start with one of these directories
+                will be considered.
+
         Returns:
             List of tuples, where each tuple contains:
             - hash: The MD5 hash that appears multiple times
             - filepaths: Comma-separated string of file paths with that hash
 
         Only returns hashes that appear more than once in the database,
-        effectively identifying duplicate photos.
+        effectively identifying duplicate photos. Results are paginated based
+        on the current page_number and hashes_per_page settings.
         """
         try:
             # Grab the duplicate photos, grouped by hash
@@ -150,12 +161,13 @@ class Database:
 
     def delete_stale_photos(self, directories_to_scan, timestamp):
         """
-        Delete photo records from the database for the given directory whose
+        Delete photo records from the database for the given directories whose
         'lastseen' timestamp is older than the provided value.
 
         Args:
-            directory_to_scan: The root directory as a string or Path. Only photos
-                whose filepaths start with this directory will be considered.
+            directories_to_scan: List of directory paths as strings or Path objects.
+                Only photos whose filepaths start with one of these directories
+                will be considered.
             timestamp (datetime): Any records with a 'lastseen' earlier than this
                 datetime will be deleted from the database.
 

@@ -1,3 +1,10 @@
+"""Image hashing functionality for duplicate photo detection.
+
+This module provides the Hasher class for computing perceptual hashes (dHash)
+of image files, enabling the identification of duplicate or similar images
+regardless of minor differences in format, compression, or metadata.
+"""
+
 import imagehash
 from PIL import Image
 

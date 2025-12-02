@@ -10,15 +10,15 @@ from pathlib import Path
 
 class Finder:
     def __init__(self, database, directories_to_scan=None):
-        """Initialize the Finder with a database and directory to scan.
+        """Initialize the Finder with a database and directories to scan.
 
         Args:
             database: Database instance for storing and checking photo hashes.
-            directory_to_scan: Path to the directory to scan for photo files.
-            directories_to_scan: List of paths to the directories to scan.
+            directories_to_scan: List of paths to the directories to scan for
+                photo files. Defaults to [Path.home()] if not provided.
 
         Sets up the finder with supported image extensions (.png, .jpg, .jpeg,
-        .gif, .bmp) and stores references to the database and scan directory.
+        .gif, .bmp) and stores references to the database and scan directories.
         """
         # self.directory_to_scan = directory_to_scan or Path.home()
         self.directories_to_scan = directories_to_scan or [Path.home()]
@@ -26,14 +26,14 @@ class Finder:
         self.database = database
 
     def find_photo_filepaths(self):
-        """Find all photo file paths in the configured directory.
+        """Find all photo file paths in the configured directories.
 
         Returns:
-            List of file paths to image files found in the directory and
+            List of file paths to image files found in the directories and
             all subdirectories. Only files with supported image extensions
             (.png, .jpg, .jpeg, .gif, .bmp) are included.
 
-        Recursively walks through the directory tree and collects paths
+        Recursively walks through each directory tree and collects paths
         to all files matching the valid image extensions.
         """
         filepaths = []
